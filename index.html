@@ -1,26 +1,61 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-    <title>Data Entry Form</title>
+    <title>Advanced Data Entry</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
     <style>
-        body { font-family: Arial; text-align: center; margin-top: 30px; }
-        input, select, button { padding: 10px; margin: 5px; text-transform: uppercase; }
-        table { width: 90%; margin: auto; border-collapse: collapse; margin-top: 20px; }
-        th, td { border: 1px solid black; padding: 8px; }
+        body { font-family: Arial; text-align: center; margin: 20px; }
+        input, select, button {
+            padding: 10px; margin: 5px;
+            text-transform: uppercase;
+        }
+
+
+        .table-container {
+            overflow-x: auto;
+        }
+
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+            min-width: 700px;
+        }
+
+
+        th, td {
+            border: 1px solid black;
+            padding: 8px;
+        }
+
+
         th { background: #f4f4f4; }
+
+
+        .total-box {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+
+        @media (max-width: 600px) {
+            input, select, button {
+                width: 90%;
+            }
+        }
     </style>
 </head>
 <body>
 
 
-<h1>Data Entry Form</h1>
+<h2>Data Entry</h2>
 
 
 <input type="date" id="dateInput">
 <input type="text" id="villageInput" placeholder="Village">
 <input type="number" id="weightInput" placeholder="Weight">
-<input type="number" id="receiptInput" placeholder="Receipt No" oninput="validateReceipt()">
+<input type="number" id="receiptInput" placeholder="Receipt No">
 
 
 <select id="carInput">
@@ -37,12 +72,20 @@
 
 
 <br><br>
-<input type="text" id="searchInput" placeholder="Search..." onkeyup="filterTable()">
 
 
-<h2>Saved Data</h2>
+<input type="text" id="searchInput" placeholder="Search..." onkeyup="applyFilters()">
+<input type="date" id="fromDate" onchange="applyFilters()">
+<input type="date" id="toDate" onchange="applyFilters()">
 
 
+<div class="total-box">
+    Total (All): <span id="totalAll">0</span> |
+    Total (Filtered): <span id="totalFiltered">0</span>
+</div>
+
+
+<div class="table-container">
 <table>
 <thead>
 <tr>
@@ -56,27 +99,75 @@
 </thead>
 <tbody id="dataList"></tbody>
 </table>
+</div>
 
 
 <script>
 const PASSWORD = "samra3532";
 
 
-function setTodayDate() {
-    let today = new Date().toISOString().split('T')[0];
-    document.getElementById("dateInput").value = today;
+function setToday() {
+    dateInput.value = new Date().toISOString().split('T')[0];
 }
 
 
-window.onload = function() {
-    setTodayDate();
-    loadTable();
+window.onload = () => {
+    setToday();
+    renderTable();
 };
 
 
-function loadTable() {
-    let data = JSON.parse(localStorage.getItem("dataList")) || [];
-    let table = document.getElementById("dataList");
+function getData() {
+    return JSON.parse(localStorage.getItem("dataList")) || [];
+}
+
+
+function saveData(data) {
+    localStorage.setItem("dataList", JSON.stringify(data));
+}
+
+
+function addData() {
+    let data = getData();
+
+
+    let date = dateInput.value;
+    let village = villageInput.value.toUpperCase();
+    let weight = weightInput.value;
+    let receipt = receiptInput.value;
+    let car = carInput.value;
+
+
+    if (!date || !village || !weight || !receipt || !car) {
+        alert("All fields required");
+        return;
+    }
+
+
+    // Duplicate check
+    if (data.some(row => row[3] === receipt)) {
+        alert("Duplicate receipt number!");
+        return;
+    }
+
+
+    data.push([date, village, weight, receipt, car]);
+    saveData(data);
+
+
+    villageInput.value = "";
+    weightInput.value = "";
+    receiptInput.value = "";
+    carInput.value = "";
+
+
+    renderTable();
+}
+
+
+function renderTable() {
+    let data = getData();
+    let table = dataList;
     table.innerHTML = "";
 
 
@@ -91,135 +182,108 @@ function loadTable() {
         });
 
 
-        let actionTd = document.createElement("td");
-
-
-        actionTd.innerHTML = `
+        let action = document.createElement("td");
+        action.innerHTML = `
             <button onclick="editRow(${index})">Edit</button>
             <button onclick="deleteRow(${index})">Delete</button>
         `;
+        tr.appendChild(action);
 
 
-        tr.appendChild(actionTd);
         table.appendChild(tr);
     });
+
+
+    applyFilters();
+    updateTotal();
 }
 
 
-function addData() {
-    let date = dateInput.value;
-    let village = villageInput.value.toUpperCase();
-    let weight = weightInput.value;
-    let receipt = receiptInput.value;
-    let car = carInput.value;
+function applyFilters() {
+    let search = searchInput.value.toLowerCase();
+    let from = fromDate.value;
+    let to = toDate.value;
 
 
-    if (!date || !village || !weight || !receipt || !car) {
-        alert("All fields required");
-        return;
-    }
-
-
-    let data = JSON.parse(localStorage.getItem("dataList")) || [];
-    data.push([date, village, weight, receipt, car]);
-
-
-    localStorage.setItem("dataList", JSON.stringify(data));
-
-
-    loadTable();
-
-
-    villageInput.value = "";
-    weightInput.value = "";
-    receiptInput.value = "";
-    carInput.value = "";
-}
-
-
-function editRow(index) {
-    verifyPassword(() => {
-        let data = JSON.parse(localStorage.getItem("dataList"));
-        let row = data[index];
-
-
-        let newVillage = prompt("Village:", row[1]);
-        let newWeight = prompt("Weight:", row[2]);
-        let newReceipt = prompt("Receipt:", row[3]);
-        let newCar = prompt("Car:", row[4]);
-
-
-        if (newVillage && newWeight && newReceipt && newCar) {
-            data[index] = [row[0], newVillage.toUpperCase(), newWeight, newReceipt, newCar];
-            localStorage.setItem("dataList", JSON.stringify(data));
-            loadTable();
-        }
-    });
-}
-
-
-function deleteRow(index) {
-    verifyPassword(() => {
-        let data = JSON.parse(localStorage.getItem("dataList"));
-        data.splice(index, 1);
-        localStorage.setItem("dataList", JSON.stringify(data));
-        loadTable();
-    });
-}
-
-
-function filterTable() {
-    let input = document.getElementById("searchInput").value.toLowerCase();
     let rows = document.querySelectorAll("#dataList tr");
 
 
     rows.forEach(row => {
         let text = row.innerText.toLowerCase();
-        row.style.display = text.includes(input) ? "" : "none";
+        let date = row.cells[0].innerText;
+
+
+        let show = true;
+
+
+        if (search && !text.includes(search)) show = false;
+        if (from && date < from) show = false;
+        if (to && date > to) show = false;
+
+
+        row.style.display = show ? "" : "none";
+    });
+
+
+    updateTotal();
+}
+
+
+function updateTotal() {
+    let data = getData();
+    let totalAll = data.reduce((sum, r) => sum + Number(r[2]), 0);
+
+
+    let visibleRows = document.querySelectorAll("#dataList tr:not([style*='display: none'])");
+    let totalFiltered = 0;
+
+
+    visibleRows.forEach(r => {
+        totalFiltered += Number(r.cells[2].innerText);
+    });
+
+
+    totalAllEl = document.getElementById("totalAll");
+    totalFilteredEl = document.getElementById("totalFiltered");
+
+
+    totalAllEl.innerText = totalAll;
+    totalFilteredEl.innerText = totalFiltered;
+}
+
+
+function editRow(index) {
+    verifyPassword(() => {
+        let data = getData();
+        let row = data[index];
+
+
+        let tr = dataList.children[index];
+        tr.innerHTML = "";
+
+
+        row.forEach((cell, i) => {
+            let td = document.createElement("td");
+            td.innerHTML = `<input value="${cell}">`;
+            tr.appendChild(td);
+        });
+
+
+        let action = document.createElement("td");
+        action.innerHTML = `
+            <button onclick="saveEdit(${index})">Save</button>
+            <button onclick="renderTable()">Cancel</button>
+        `;
+        tr.appendChild(action);
     });
 }
 
 
-function validateReceipt() {
-    receiptInput.value = receiptInput.value.replace(/\D/g, "");
-}
+function saveEdit(index) {
+    let tr = dataList.children[index];
+    let inputs = tr.querySelectorAll("input");
 
 
-function verifyPassword(callback) {
-    let user = prompt("Enter password:");
-    if (user === PASSWORD) {
-        callback();
-    } else {
-        alert("Wrong password");
-    }
-}
-
-
-function clearData() {
-    localStorage.removeItem("dataList");
-    loadTable();
-}
-
-
-function downloadExcel() {
-    let data = JSON.parse(localStorage.getItem("dataList")) || [];
-
-
-    if (data.length === 0) {
-        alert("No data");
-        return;
-    }
-
-
-    let ws = XLSX.utils.aoa_to_sheet([["Date","Village","Weight","Receipt","Car"], ...data]);
-    let wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Data");
-
-
-    XLSX.writeFile(wb, "data.xlsx");
-}
-</script>
-
-
-</body>
-</html>
+    let newRow = [
+        inputs[0].value,
+        inputs[1].value.toUpperCase(),
