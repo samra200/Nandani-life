@@ -3,10 +3,15 @@
 <head>
     <title>Advanced Data Entry</title>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+
+
     <style>
         body { font-family: Arial; text-align: center; margin: 20px; }
+
+
         input, select, button {
-            padding: 10px; margin: 5px;
+            padding: 10px;
+            margin: 5px;
             text-transform: uppercase;
         }
 
@@ -46,6 +51,8 @@
         }
     </style>
 </head>
+
+
 <body>
 
 
@@ -66,6 +73,8 @@
 
 
 <br>
+
+
 <button onclick="addData()">Add</button>
 <button onclick="verifyPassword(clearData)">Clear All</button>
 <button onclick="downloadExcel()">Download Excel</button>
@@ -106,8 +115,13 @@
 const PASSWORD = "samra3532";
 
 
+// ✅ FIXED DATE (LOCAL TIME)
 function setToday() {
-    dateInput.value = new Date().toISOString().split('T')[0];
+    let d = new Date();
+    let year = d.getFullYear();
+    let month = String(d.getMonth() + 1).padStart(2, '0');
+    let day = String(d.getDate()).padStart(2, '0');
+    dateInput.value = `${year}-${month}-${day}`;
 }
 
 
@@ -127,6 +141,7 @@ function saveData(data) {
 }
 
 
+// ADD DATA
 function addData() {
     let data = getData();
 
@@ -144,7 +159,7 @@ function addData() {
     }
 
 
-    // Duplicate check
+    // DUPLICATE CHECK
     if (data.some(row => row[3] === receipt)) {
         alert("Duplicate receipt number!");
         return;
@@ -165,6 +180,7 @@ function addData() {
 }
 
 
+// RENDER TABLE
 function renderTable() {
     let data = getData();
     let table = dataList;
@@ -199,6 +215,7 @@ function renderTable() {
 }
 
 
+// FILTER
 function applyFilters() {
     let search = searchInput.value.toLowerCase();
     let from = fromDate.value;
@@ -229,22 +246,32 @@ function applyFilters() {
 }
 
 
+// TOTALS
 function updateTotal() {
     let data = getData();
     let totalAll = data.reduce((sum, r) => sum + Number(r[2]), 0);
 
 
-    let visibleRows = document.querySelectorAll("#dataList tr:not([style*='display: none'])");
-    let totalFiltered = 0;
+    let search = searchInput.value.toLowerCase();
+    let from = fromDate.value;
+    let to = toDate.value;
 
 
-    visibleRows.forEach(r => {
-        totalFiltered += Number(r.cells[2].innerText);
+    let filtered = data.filter(row => {
+        let text = row.join(" ").toLowerCase();
+        let date = row[0];
+
+
+        if (search && !text.includes(search)) return false;
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+
+
+        return true;
     });
 
 
-    totalAllEl = document.getElementById("totalAll");
-    totalFilteredEl = document.getElementById("totalFiltered");
+    let totalFiltered = filtered.reduce((sum, r) => sum + Number(r[2]), 0);
 
 
     totalAllEl.innerText = totalAll;
@@ -252,6 +279,7 @@ function updateTotal() {
 }
 
 
+// EDIT
 function editRow(index) {
     verifyPassword(() => {
         let data = getData();
@@ -262,7 +290,7 @@ function editRow(index) {
         tr.innerHTML = "";
 
 
-        row.forEach((cell, i) => {
+        row.forEach(cell => {
             let td = document.createElement("td");
             td.innerHTML = `<input value="${cell}">`;
             tr.appendChild(td);
@@ -287,3 +315,97 @@ function saveEdit(index) {
     let newRow = [
         inputs[0].value,
         inputs[1].value.toUpperCase(),
+        inputs[2].value,
+        inputs[3].value,
+        inputs[4].value
+    ];
+
+
+    let data = getData();
+
+
+    if (data.some((r, i) => r[3] === newRow[3] && i !== index)) {
+        alert("Duplicate receipt!");
+        return;
+    }
+
+
+    data[index] = newRow;
+    saveData(data);
+    renderTable();
+}
+
+
+// DELETE
+function deleteRow(index) {
+    verifyPassword(() => {
+        let data = getData();
+        data.splice(index, 1);
+        saveData(data);
+        renderTable();
+    });
+}
+
+
+// PASSWORD
+function verifyPassword(callback) {
+    let pass = prompt("Enter password:");
+    if (pass === PASSWORD) callback();
+    else alert("Wrong password");
+}
+
+
+// CLEAR
+function clearData() {
+    localStorage.removeItem("dataList");
+    renderTable();
+}
+
+
+// ✅ FIXED DOWNLOAD (FILTER BASED)
+function downloadExcel() {
+    let data = getData();
+
+
+    let search = searchInput.value.toLowerCase();
+    let from = fromDate.value;
+    let to = toDate.value;
+
+
+    let filtered = data.filter(row => {
+        let text = row.join(" ").toLowerCase();
+        let date = row[0];
+
+
+        if (search && !text.includes(search)) return false;
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+
+
+        return true;
+    });
+
+
+    if (filtered.length === 0) {
+        alert("No data");
+        return;
+    }
+
+
+    let ws = XLSX.utils.aoa_to_sheet([
+        ["Date","Village","Weight","Receipt","Car"],
+        ...filtered
+    ]);
+
+
+    let wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Data");
+
+
+    XLSX.writeFile(wb, "data.xlsx");
+}
+</script>
+
+
+</body>
+</html>
