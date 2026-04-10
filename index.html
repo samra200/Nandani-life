@@ -16,9 +16,7 @@
         }
 
 
-        .table-container {
-            overflow-x: auto;
-        }
+        .table-container { overflow-x: auto; }
 
 
         table {
@@ -45,9 +43,7 @@
 
 
         @media (max-width: 600px) {
-            input, select, button {
-                width: 90%;
-            }
+            input, select, button { width: 90%; }
         }
     </style>
 </head>
@@ -83,9 +79,9 @@
 <br><br>
 
 
-<input type="text" id="searchInput" placeholder="Search..." onkeyup="applyFilters()">
-<input type="date" id="fromDate" onchange="applyFilters()">
-<input type="date" id="toDate" onchange="applyFilters()">
+<input type="text" id="searchInput" placeholder="Search..." onkeyup="renderTable()">
+<input type="date" id="fromDate" onchange="renderTable()">
+<input type="date" id="toDate" onchange="renderTable()">
 
 
 <div class="total-box">
@@ -115,13 +111,21 @@
 const PASSWORD = "samra3532";
 
 
-// ✅ FIXED DATE (LOCAL TIME)
+// ✅ Set today's date (local)
 function setToday() {
     let d = new Date();
-    let year = d.getFullYear();
-    let month = String(d.getMonth() + 1).padStart(2, '0');
+    let y = d.getFullYear();
+    let m = String(d.getMonth() + 1).padStart(2, '0');
     let day = String(d.getDate()).padStart(2, '0');
-    dateInput.value = `${year}-${month}-${day}`;
+    let today = `${y}-${m}-${day}`;
+
+
+    dateInput.value = today;
+
+
+    // Default filter = today
+    fromDate.value = today;
+    toDate.value = today;
 }
 
 
@@ -141,7 +145,53 @@ function saveData(data) {
 }
 
 
-// ADD DATA
+// ✅ Get filtered data (single source of truth)
+function getFilteredData() {
+    let data = getData();
+
+
+    // 🔢 Sort by receipt
+    data.sort((a, b) => Number(a[3]) - Number(b[3]));
+
+
+    let search = searchInput.value.toLowerCase();
+    let from = fromDate.value;
+    let to = toDate.value;
+
+
+    let today = new Date();
+    let y = today.getFullYear();
+    let m = String(today.getMonth() + 1).padStart(2, '0');
+    let d = String(today.getDate()).padStart(2, '0');
+    let todayStr = `${y}-${m}-${d}`;
+
+
+    return data.filter(row => {
+        let text = row.join(" ").toLowerCase();
+        let date = row[0];
+
+
+        // Default = today
+        if (!search && !from && !to) {
+            if (date !== todayStr) return false;
+        }
+
+
+        // Search override
+        if (search && !text.includes(search)) return false;
+
+
+        // Date filter
+        if (from && date < from) return false;
+        if (to && date > to) return false;
+
+
+        return true;
+    });
+}
+
+
+// ADD
 function addData() {
     let data = getData();
 
@@ -159,9 +209,8 @@ function addData() {
     }
 
 
-    // DUPLICATE CHECK
     if (data.some(row => row[3] === receipt)) {
-        alert("Duplicate receipt number!");
+        alert("Duplicate receipt!");
         return;
     }
 
@@ -180,14 +229,16 @@ function addData() {
 }
 
 
-// RENDER TABLE
+// RENDER
 function renderTable() {
-    let data = getData();
     let table = dataList;
     table.innerHTML = "";
 
 
-    data.forEach((row, index) => {
+    let filtered = getFilteredData();
+
+
+    filtered.forEach((row, index) => {
         let tr = document.createElement("tr");
 
 
@@ -210,80 +261,34 @@ function renderTable() {
     });
 
 
-    applyFilters();
     updateTotal();
 }
 
 
-// FILTER
-function applyFilters() {
-    let search = searchInput.value.toLowerCase();
-    let from = fromDate.value;
-    let to = toDate.value;
-
-
-    let rows = document.querySelectorAll("#dataList tr");
-
-
-    rows.forEach(row => {
-        let text = row.innerText.toLowerCase();
-        let date = row.cells[0].innerText;
-
-
-        let show = true;
-
-
-        if (search && !text.includes(search)) show = false;
-        if (from && date < from) show = false;
-        if (to && date > to) show = false;
-
-
-        row.style.display = show ? "" : "none";
-    });
-
-
-    updateTotal();
-}
-
-
-// TOTALS
+// TOTAL
 function updateTotal() {
-    let data = getData();
-    let totalAll = data.reduce((sum, r) => sum + Number(r[2]), 0);
+    let allData = getData();
+    let filtered = getFilteredData();
 
 
-    let search = searchInput.value.toLowerCase();
-    let from = fromDate.value;
-    let to = toDate.value;
-
-
-    let filtered = data.filter(row => {
-        let text = row.join(" ").toLowerCase();
-        let date = row[0];
-
-
-        if (search && !text.includes(search)) return false;
-        if (from && date < from) return false;
-        if (to && date > to) return false;
-
-
-        return true;
-    });
-
-
-    let totalFiltered = filtered.reduce((sum, r) => sum + Number(r[2]), 0);
+    let totalAll = allData.reduce((s, r) => s + Number(r[2]), 0);
+    let totalFiltered = filtered.reduce((s, r) => s + Number(r[2]), 0);
 
 
     totalAllEl.innerText = totalAll;
-    totalFilteredEl.innerText = totalFiltered;
+    totalFilteredEl.innerText = totalFiltered + " | Entries: " + filtered.length;
 }
 
 
 // EDIT
 function editRow(index) {
     verifyPassword(() => {
-        let data = getData();
-        let row = data[index];
+        let filtered = getFilteredData();
+        let originalData = getData();
+
+
+        let row = filtered[index];
+        let realIndex = originalData.findIndex(r => JSON.stringify(r) === JSON.stringify(row));
 
 
         let tr = dataList.children[index];
@@ -299,7 +304,7 @@ function editRow(index) {
 
         let action = document.createElement("td");
         action.innerHTML = `
-            <button onclick="saveEdit(${index})">Save</button>
+            <button onclick="saveEdit(${realIndex})">Save</button>
             <button onclick="renderTable()">Cancel</button>
         `;
         tr.appendChild(action);
@@ -308,8 +313,8 @@ function editRow(index) {
 
 
 function saveEdit(index) {
-    let tr = dataList.children[index];
-    let inputs = tr.querySelectorAll("input");
+    let tr = document.querySelectorAll("#dataList tr input");
+    let inputs = Array.from(tr);
 
 
     let newRow = [
@@ -339,18 +344,25 @@ function saveEdit(index) {
 // DELETE
 function deleteRow(index) {
     verifyPassword(() => {
-        let data = getData();
-        data.splice(index, 1);
-        saveData(data);
+        let filtered = getFilteredData();
+        let originalData = getData();
+
+
+        let row = filtered[index];
+        let realIndex = originalData.findIndex(r => JSON.stringify(r) === JSON.stringify(row));
+
+
+        originalData.splice(realIndex, 1);
+        saveData(originalData);
         renderTable();
     });
 }
 
 
 // PASSWORD
-function verifyPassword(callback) {
-    let pass = prompt("Enter password:");
-    if (pass === PASSWORD) callback();
+function verifyPassword(cb) {
+    let p = prompt("Enter password:");
+    if (p === PASSWORD) cb();
     else alert("Wrong password");
 }
 
@@ -362,28 +374,9 @@ function clearData() {
 }
 
 
-// ✅ FIXED DOWNLOAD (FILTER BASED)
+// DOWNLOAD (FILTERED)
 function downloadExcel() {
-    let data = getData();
-
-
-    let search = searchInput.value.toLowerCase();
-    let from = fromDate.value;
-    let to = toDate.value;
-
-
-    let filtered = data.filter(row => {
-        let text = row.join(" ").toLowerCase();
-        let date = row[0];
-
-
-        if (search && !text.includes(search)) return false;
-        if (from && date < from) return false;
-        if (to && date > to) return false;
-
-
-        return true;
-    });
+    let filtered = getFilteredData();
 
 
     if (filtered.length === 0) {
