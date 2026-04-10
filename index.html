@@ -108,29 +108,24 @@
 
 
 <script>
-const PASSWORD = "samra3532";
+const PASSWORD = "3532";
 
 
-// ✅ Set today's date (local)
-function setToday() {
+// ✅ Proper local date
+function getToday() {
     let d = new Date();
     let y = d.getFullYear();
     let m = String(d.getMonth() + 1).padStart(2, '0');
     let day = String(d.getDate()).padStart(2, '0');
-    let today = `${y}-${m}-${day}`;
-
-
-    dateInput.value = today;
-
-
-    // Default filter = today
-    fromDate.value = today;
-    toDate.value = today;
+    return `${y}-${m}-${day}`;
 }
 
 
 window.onload = () => {
-    setToday();
+    let today = getToday();
+    dateInput.value = today;
+    fromDate.value = today;
+    toDate.value = today;
     renderTable();
 };
 
@@ -145,12 +140,12 @@ function saveData(data) {
 }
 
 
-// ✅ Get filtered data (single source of truth)
+// ✅ Single source of truth
 function getFilteredData() {
     let data = getData();
 
 
-    // 🔢 Sort by receipt
+    // sort by receipt
     data.sort((a, b) => Number(a[3]) - Number(b[3]));
 
 
@@ -159,29 +154,12 @@ function getFilteredData() {
     let to = toDate.value;
 
 
-    let today = new Date();
-    let y = today.getFullYear();
-    let m = String(today.getMonth() + 1).padStart(2, '0');
-    let d = String(today.getDate()).padStart(2, '0');
-    let todayStr = `${y}-${m}-${d}`;
-
-
     return data.filter(row => {
         let text = row.join(" ").toLowerCase();
         let date = row[0];
 
 
-        // Default = today
-        if (!search && !from && !to) {
-            if (date !== todayStr) return false;
-        }
-
-
-        // Search override
         if (search && !text.includes(search)) return false;
-
-
-        // Date filter
         if (from && date < from) return false;
         if (to && date > to) return false;
 
@@ -196,26 +174,28 @@ function addData() {
     let data = getData();
 
 
-    let date = dateInput.value;
-    let village = villageInput.value.toUpperCase();
-    let weight = weightInput.value;
-    let receipt = receiptInput.value;
-    let car = carInput.value;
+    let row = [
+        dateInput.value,
+        villageInput.value.toUpperCase(),
+        weightInput.value,
+        receiptInput.value,
+        carInput.value
+    ];
 
 
-    if (!date || !village || !weight || !receipt || !car) {
+    if (row.some(v => !v)) {
         alert("All fields required");
         return;
     }
 
 
-    if (data.some(row => row[3] === receipt)) {
+    if (data.some(r => r[3] === row[3])) {
         alert("Duplicate receipt!");
         return;
     }
 
 
-    data.push([date, village, weight, receipt, car]);
+    data.push(row);
     saveData(data);
 
 
@@ -267,16 +247,17 @@ function renderTable() {
 
 // TOTAL
 function updateTotal() {
-    let allData = getData();
+    let all = getData();
     let filtered = getFilteredData();
 
 
-    let totalAll = allData.reduce((s, r) => s + Number(r[2]), 0);
-    let totalFiltered = filtered.reduce((s, r) => s + Number(r[2]), 0);
+    let totalAll = all.reduce((s, r) => s + (Number(r[2]) || 0), 0);
+    let totalFiltered = filtered.reduce((s, r) => s + (Number(r[2]) || 0), 0);
 
 
-    totalAllEl.innerText = totalAll;
-    totalFilteredEl.innerText = totalFiltered + " | Entries: " + filtered.length;
+    document.getElementById("totalAll").innerText = totalAll;
+    document.getElementById("totalFiltered").innerText =
+        totalFiltered + " | Entries: " + filtered.length;
 }
 
 
@@ -284,11 +265,11 @@ function updateTotal() {
 function editRow(index) {
     verifyPassword(() => {
         let filtered = getFilteredData();
-        let originalData = getData();
+        let data = getData();
 
 
         let row = filtered[index];
-        let realIndex = originalData.findIndex(r => JSON.stringify(r) === JSON.stringify(row));
+        let realIndex = data.findIndex(r => JSON.stringify(r) === JSON.stringify(row));
 
 
         let tr = dataList.children[index];
@@ -313,8 +294,7 @@ function editRow(index) {
 
 
 function saveEdit(index) {
-    let tr = document.querySelectorAll("#dataList tr input");
-    let inputs = Array.from(tr);
+    let inputs = document.querySelectorAll("#dataList tr input");
 
 
     let newRow = [
@@ -345,15 +325,15 @@ function saveEdit(index) {
 function deleteRow(index) {
     verifyPassword(() => {
         let filtered = getFilteredData();
-        let originalData = getData();
+        let data = getData();
 
 
         let row = filtered[index];
-        let realIndex = originalData.findIndex(r => JSON.stringify(r) === JSON.stringify(row));
+        let realIndex = data.findIndex(r => JSON.stringify(r) === JSON.stringify(row));
 
 
-        originalData.splice(realIndex, 1);
-        saveData(originalData);
+        data.splice(realIndex, 1);
+        saveData(data);
         renderTable();
     });
 }
@@ -374,7 +354,7 @@ function clearData() {
 }
 
 
-// DOWNLOAD (FILTERED)
+// DOWNLOAD
 function downloadExcel() {
     let filtered = getFilteredData();
 
