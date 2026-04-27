@@ -1,71 +1,83 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-    <title>Advanced Data Entry</title>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+<title>Project 2 Data Entry</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
 
 
-    <style>
-        body { font-family: Arial; text-align: center; margin: 20px; }
+<style>
+body{
+font-family:Arial;
+text-align:center;
+margin:20px;
+}
 
 
-        input, select, button {
-            padding: 10px;
-            margin: 5px;
-            text-transform: uppercase;
-        }
+input,button{
+padding:10px;
+margin:5px;
+text-transform:uppercase;
+}
 
 
-        .table-container { overflow-x: auto; }
+.table-container{
+overflow-x:auto;
+}
 
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-            min-width: 700px;
-        }
+table{
+width:100%;
+min-width:700px;
+border-collapse:collapse;
+margin-top:20px;
+}
 
 
-        th, td {
-            border: 1px solid black;
-            padding: 8px;
-        }
+th,td{
+border:1px solid black;
+padding:8px;
+}
 
 
-        th { background: #f4f4f4; }
+th{
+background:#f4f4f4;
+}
 
 
-        .total-box {
-            margin-top: 10px;
-            font-weight: bold;
-        }
+.total-box{
+margin-top:12px;
+font-weight:bold;
+}
 
 
-        @media (max-width: 600px) {
-            input, select, button { width: 90%; }
-        }
-    </style>
+@media(max-width:600px){
+input,button{
+width:90%;
+}
+}
+</style>
 </head>
-
-
 <body>
 
 
-<h2>Data Entry</h2>
+<h2>Project 2 Data Entry</h2>
 
 
 <input type="date" id="dateInput">
-<input type="text" id="villageInput" placeholder="Village">
+
+
+<input list="villageList" id="villageInput" placeholder="Village (Optional)">
+<datalist id="villageList"></datalist>
+
+
 <input type="number" id="weightInput" placeholder="Weight">
-<input type="number" id="receiptInput" placeholder="Receipt No">
 
 
-<select id="carInput">
-    <option value="">Select Car</option>
-    <option>GJ12BX1269</option>
-    <option>GJ12BZ1269</option>
-</select>
+<input type="number" id="receiptInput" placeholder="Receipt (Optional)">
+
+
+<input list="carList" id="carInput" placeholder="Car No">
+<datalist id="carList"></datalist>
 
 
 <br>
@@ -79,14 +91,28 @@
 <br><br>
 
 
-<input type="text" id="searchInput" placeholder="Search..." onkeyup="renderTable()">
-<input type="date" id="fromDate" onchange="renderTable()">
-<input type="date" id="toDate" onchange="renderTable()">
+<input type="text"
+id="searchInput"
+placeholder="Search..."
+onkeyup="renderTable()">
+
+
+<input type="date"
+id="fromDate"
+onchange="renderTable()">
+
+
+<input type="date"
+id="toDate"
+onchange="renderTable()">
 
 
 <div class="total-box">
-    Total (All): <span id="totalAll">0</span> |
-    Total (Filtered): <span id="totalFiltered">0</span>
+Total (All):
+<span id="totalAll">0</span>
+|
+Total (Filtered):
+<span id="totalFiltered">0</span>
 </div>
 
 
@@ -108,275 +134,512 @@
 
 
 <script>
-const PASSWORD = "3532";
 
 
-// ✅ Proper local date
-function getToday() {
-    let d = new Date();
-    let y = d.getFullYear();
-    let m = String(d.getMonth() + 1).padStart(2, '0');
-    let day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+const PASSWORD="samra3532";
+const STORAGE_KEY="project2Data";
+
+
+const villageOrder=[
+"MUNDRA",
+"SADAU",
+"KAPAYA",
+"BAROI",
+"VANDH",
+"GOYAR",
+"SHEKHADIYA",
+"LUNI",
+"RAGA",
+"HAMIRAMORA",
+"MANGRA",
+"BORANA"
+];
+
+
+let villageListData=[...villageOrder];
+
+
+let carListData=[
+"GJ12BX1269",
+"GJ12BZ1269"
+];
+
+
+function loadVillageList(){
+let list=document.getElementById("villageList");
+list.innerHTML="";
+
+
+villageListData.forEach(v=>{
+let opt=document.createElement("option");
+opt.value=v;
+list.appendChild(opt);
+});
 }
 
 
-window.onload = () => {
-    let today = getToday();
-    dateInput.value = today;
-    fromDate.value = today;
-    toDate.value = today;
-    renderTable();
+function loadCarList(){
+let list=document.getElementById("carList");
+list.innerHTML="";
+
+
+carListData.forEach(v=>{
+let opt=document.createElement("option");
+opt.value=v;
+list.appendChild(opt);
+});
+}
+
+
+function getToday(){
+let d=new Date();
+let y=d.getFullYear();
+let m=String(d.getMonth()+1).padStart(2,'0');
+let day=String(d.getDate()).padStart(2,'0');
+return `${y}-${m}-${day}`;
+}
+
+
+window.onload=function(){
+
+
+let today=getToday();
+
+
+dateInput.value=today;
+fromDate.value=today;
+toDate.value=today;
+
+
+loadVillageList();
+loadCarList();
+
+
+renderTable();
 };
 
 
-function getData() {
-    return JSON.parse(localStorage.getItem("dataList")) || [];
+function getData(){
+return JSON.parse(
+localStorage.getItem(STORAGE_KEY)
+)||[];
 }
 
 
-function saveData(data) {
-    localStorage.setItem("dataList", JSON.stringify(data));
+function saveData(data){
+localStorage.setItem(
+STORAGE_KEY,
+JSON.stringify(data)
+);
 }
 
 
-// ✅ Single source of truth
-function getFilteredData() {
-    let data = getData();
+function sortData(data){
 
 
-    // sort by receipt
-    data.sort((a, b) => Number(a[3]) - Number(b[3]));
+return data.sort((a,b)=>{
 
 
-    let search = searchInput.value.toLowerCase();
-    let from = fromDate.value;
-    let to = toDate.value;
-
-
-    return data.filter(row => {
-        let text = row.join(" ").toLowerCase();
-        let date = row[0];
-
-
-        if (search && !text.includes(search)) return false;
-        if (from && date < from) return false;
-        if (to && date > to) return false;
-
-
-        return true;
-    });
+if(a[0]!==b[0]){
+return a[0].localeCompare(b[0]);
 }
 
 
-// ADD
-function addData() {
-    let data = getData();
+let va=villageOrder.indexOf(a[1]);
+let vb=villageOrder.indexOf(b[1]);
 
 
-    let row = [
-        dateInput.value,
-        villageInput.value.toUpperCase(),
-        weightInput.value,
-        receiptInput.value,
-        carInput.value
-    ];
+if(va===-1) va=999;
+if(vb===-1) vb=999;
 
 
-    if (row.some(v => !v)) {
-        alert("All fields required");
-        return;
-    }
-
-
-    if (data.some(r => r[3] === row[3])) {
-        alert("Duplicate receipt!");
-        return;
-    }
-
-
-    data.push(row);
-    saveData(data);
-
-
-    villageInput.value = "";
-    weightInput.value = "";
-    receiptInput.value = "";
-    carInput.value = "";
-
-
-    renderTable();
+if(va!==vb){
+return va-vb;
 }
 
 
-// RENDER
-function renderTable() {
-    let table = dataList;
-    table.innerHTML = "";
+let ra=Number(a[3]||9999999);
+let rb=Number(b[3]||9999999);
 
 
-    let filtered = getFilteredData();
+return ra-rb;
 
 
-    filtered.forEach((row, index) => {
-        let tr = document.createElement("tr");
+});
 
 
-        row.forEach(cell => {
-            let td = document.createElement("td");
-            td.textContent = cell;
-            tr.appendChild(td);
-        });
-
-
-        let action = document.createElement("td");
-        action.innerHTML = `
-            <button onclick="editRow(${index})">Edit</button>
-            <button onclick="deleteRow(${index})">Delete</button>
-        `;
-        tr.appendChild(action);
-
-
-        table.appendChild(tr);
-    });
-
-
-    updateTotal();
 }
 
 
-// TOTAL
-function updateTotal() {
-    let all = getData();
-    let filtered = getFilteredData();
+function getFilteredData(){
 
 
-    let totalAll = all.reduce((s, r) => s + (Number(r[2]) || 0), 0);
-    let totalFiltered = filtered.reduce((s, r) => s + (Number(r[2]) || 0), 0);
+let data=sortData(getData());
 
 
-    document.getElementById("totalAll").innerText = totalAll;
-    document.getElementById("totalFiltered").innerText =
-        totalFiltered + " | Entries: " + filtered.length;
+let search=searchInput.value.toLowerCase();
+let from=fromDate.value;
+let to=toDate.value;
+
+
+return data.filter(row=>{
+
+
+let text=row.join(" ").toLowerCase();
+
+
+if(search && !text.includes(search))
+return false;
+
+
+if(from && row[0]<from)
+return false;
+
+
+if(to && row[0]>to)
+return false;
+
+
+return true;
+
+
+});
+
+
 }
 
 
-// EDIT
-function editRow(index) {
-    verifyPassword(() => {
-        let filtered = getFilteredData();
-        let data = getData();
+function addData(){
 
 
-        let row = filtered[index];
-        let realIndex = data.findIndex(r => JSON.stringify(r) === JSON.stringify(row));
+let data=getData();
 
 
-        let tr = dataList.children[index];
-        tr.innerHTML = "";
+let village=villageInput.value.toUpperCase();
+let car=carInput.value.toUpperCase();
 
 
-        row.forEach(cell => {
-            let td = document.createElement("td");
-            td.innerHTML = `<input value="${cell}">`;
-            tr.appendChild(td);
-        });
+let row=[
+dateInput.value,
+village,
+weightInput.value,
+receiptInput.value,
+car
+];
 
 
-        let action = document.createElement("td");
-        action.innerHTML = `
-            <button onclick="saveEdit(${realIndex})">Save</button>
-            <button onclick="renderTable()">Cancel</button>
-        `;
-        tr.appendChild(action);
-    });
+if(!row[0] || !row[2] || !row[4]){
+alert("Date, Weight and Car required");
+return;
 }
 
 
-function saveEdit(index) {
-    let inputs = document.querySelectorAll("#dataList tr input");
-
-
-    let newRow = [
-        inputs[0].value,
-        inputs[1].value.toUpperCase(),
-        inputs[2].value,
-        inputs[3].value,
-        inputs[4].value
-    ];
-
-
-    let data = getData();
-
-
-    if (data.some((r, i) => r[3] === newRow[3] && i !== index)) {
-        alert("Duplicate receipt!");
-        return;
-    }
-
-
-    data[index] = newRow;
-    saveData(data);
-    renderTable();
+if(
+row[3] &&
+data.some(r=>r[3]===row[3])
+){
+alert("Duplicate receipt!");
+return;
 }
 
 
-// DELETE
-function deleteRow(index) {
-    verifyPassword(() => {
-        let filtered = getFilteredData();
-        let data = getData();
-
-
-        let row = filtered[index];
-        let realIndex = data.findIndex(r => JSON.stringify(r) === JSON.stringify(row));
-
-
-        data.splice(realIndex, 1);
-        saveData(data);
-        renderTable();
-    });
+if(village && !villageListData.includes(village)){
+villageListData.push(village);
+loadVillageList();
 }
 
 
-// PASSWORD
-function verifyPassword(cb) {
-    let p = prompt("Enter password:");
-    if (p === PASSWORD) cb();
-    else alert("Wrong password");
+if(car && !carListData.includes(car)){
+carListData.push(car);
+loadCarList();
 }
 
 
-// CLEAR
-function clearData() {
-    localStorage.removeItem("dataList");
-    renderTable();
+data.push(row);
+
+
+saveData(data);
+
+
+villageInput.value="";
+weightInput.value="";
+receiptInput.value="";
+carInput.value="";
+
+
+renderTable();
+
+
 }
 
 
-// DOWNLOAD
-function downloadExcel() {
-    let filtered = getFilteredData();
+function renderTable(){
 
 
-    if (filtered.length === 0) {
-        alert("No data");
-        return;
-    }
+let tbody=dataList;
+tbody.innerHTML="";
 
 
-    let ws = XLSX.utils.aoa_to_sheet([
-        ["Date","Village","Weight","Receipt","Car"],
-        ...filtered
-    ]);
+let filtered=getFilteredData();
 
 
-    let wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Data");
+filtered.forEach((row,index)=>{
 
 
-    XLSX.writeFile(wb, "data.xlsx");
+let tr=document.createElement("tr");
+
+
+row.forEach(cell=>{
+let td=document.createElement("td");
+td.textContent=cell;
+tr.appendChild(td);
+});
+
+
+let action=document.createElement("td");
+
+
+action.innerHTML=`
+<button onclick="editRow(${index})">
+Edit
+</button>
+
+
+<button onclick="deleteRow(${index})">
+Delete
+</button>
+`;
+
+
+tr.appendChild(action);
+tbody.appendChild(tr);
+
+
+});
+
+
+updateTotal();
+
+
 }
+
+
+function updateTotal(){
+
+
+let all=getData();
+let filtered=getFilteredData();
+
+
+let totalAll=all.reduce(
+(sum,row)=>sum+(parseFloat(row[2])||0),
+0
+);
+
+
+let totalFiltered=filtered.reduce(
+(sum,row)=>sum+(parseFloat(row[2])||0),
+0
+);
+
+
+document.getElementById("totalAll").textContent=
+totalAll;
+
+
+document.getElementById("totalFiltered").textContent=
+totalFiltered+
+" | Entries: "+
+filtered.length;
+
+
+}
+
+
+function editRow(index){
+
+
+verifyPassword(()=>{
+
+
+let filtered=getFilteredData();
+let data=getData();
+
+
+let row=filtered[index];
+
+
+let realIndex=data.findIndex(
+r=>JSON.stringify(r)===JSON.stringify(row)
+);
+
+
+let tr=dataList.children[index];
+
+
+tr.innerHTML="";
+
+
+row.forEach(cell=>{
+let td=document.createElement("td");
+td.innerHTML=`<input value="${cell}">`;
+tr.appendChild(td);
+});
+
+
+let action=document.createElement("td");
+
+
+action.innerHTML=`
+<button onclick="saveEdit(${realIndex})">
+Save
+</button>
+
+
+<button onclick="renderTable()">
+Cancel
+</button>
+`;
+
+
+tr.appendChild(action);
+
+
+});
+
+
+}
+
+
+function saveEdit(index){
+
+
+let inputs=document.querySelectorAll(
+"#dataList tr input"
+);
+
+
+let newReceipt=inputs[3].value;
+
+
+let newRow=[
+inputs[0].value,
+inputs[1].value.toUpperCase(),
+inputs[2].value,
+newReceipt,
+inputs[4].value.toUpperCase()
+];
+
+
+let data=getData();
+
+
+if(
+newReceipt &&
+data.some(
+(r,i)=>r[3]===newReceipt && i!==index
+)
+){
+alert("Duplicate receipt!");
+return;
+}
+
+
+data[index]=newRow;
+
+
+saveData(data);
+
+
+renderTable();
+
+
+}
+
+
+function deleteRow(index){
+
+
+verifyPassword(()=>{
+
+
+let filtered=getFilteredData();
+let data=getData();
+
+
+let row=filtered[index];
+
+
+let realIndex=data.findIndex(
+r=>JSON.stringify(r)===JSON.stringify(row)
+);
+
+
+data.splice(realIndex,1);
+
+
+saveData(data);
+
+
+renderTable();
+
+
+});
+
+
+}
+
+
+function verifyPassword(cb){
+let p=prompt("Enter password:");
+if(p===PASSWORD) cb();
+else alert("Wrong password");
+}
+
+
+function clearData(){
+localStorage.removeItem(STORAGE_KEY);
+renderTable();
+}
+
+
+function downloadExcel(){
+
+
+let rows=getFilteredData();
+
+
+if(rows.length===0){
+alert("No data");
+return;
+}
+
+
+let ws=XLSX.utils.aoa_to_sheet([
+["Date","Village","Weight","Receipt","Car"],
+...rows
+]);
+
+
+let wb=XLSX.utils.book_new();
+
+
+XLSX.utils.book_append_sheet(
+wb,
+ws,
+"Data"
+);
+
+
+XLSX.writeFile(
+wb,
+"project2_data.xlsx"
+);
+
+
+}
+
+
 </script>
 
 
