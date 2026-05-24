@@ -4,7 +4,11 @@
 <title>Project 2 Data Entry</title>
 
 
+
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+
+
 
 
 <style>
@@ -15,6 +19,8 @@ margin:20px;
 }
 
 
+
+
 input,button{
 padding:10px;
 margin:5px;
@@ -22,9 +28,13 @@ text-transform:uppercase;
 }
 
 
+
+
 .table-container{
 overflow-x:auto;
 }
+
+
 
 
 table{
@@ -35,10 +45,14 @@ min-width:1000px;
 }
 
 
+
+
 th,td{
 border:1px solid black;
 padding:8px;
 }
+
+
 
 
 th{
@@ -46,10 +60,14 @@ background:#f4f4f4;
 }
 
 
+
+
 .total-box{
 margin-top:10px;
 font-weight:bold;
 }
+
+
 
 
 @media(max-width:600px){
@@ -61,13 +79,21 @@ width:90%;
 </head>
 
 
+
+
 <body>
+
+
 
 
 <h2>Project 2 Data Entry</h2>
 
 
+
+
 <input type="date" id="dateInput">
+
+
 
 
 <input list="villageList"
@@ -75,7 +101,11 @@ id="villageInput"
 placeholder="Village">
 
 
+
+
 <datalist id="villageList"></datalist>
+
+
 
 
 <input type="number"
@@ -83,9 +113,13 @@ id="weightInput"
 placeholder="Weight">
 
 
+
+
 <input type="number"
 id="receiptInput"
 placeholder="Receipt No">
+
+
 
 
 <input list="carList"
@@ -93,12 +127,18 @@ id="carInput"
 placeholder="Car No">
 
 
+
+
 <datalist id="carList"></datalist>
+
+
 
 
 <input list="sellerList"
 id="sellerInput"
 placeholder="Seller">
+
+
 
 
 <datalist id="sellerList">
@@ -107,7 +147,11 @@ placeholder="Seller">
 </datalist>
 
 
+
+
 <br>
+
+
 
 
 <button onclick="addData()">
@@ -115,9 +159,13 @@ Add
 </button>
 
 
+
+
 <button onclick="verifyPassword(clearData)">
 Clear All
 </button>
+
+
 
 
 <button onclick="downloadExcel()">
@@ -125,7 +173,11 @@ Download Excel
 </button>
 
 
+
+
 <br><br>
+
+
 
 
 <input type="text"
@@ -134,14 +186,20 @@ placeholder="Search or #exclude"
 onkeyup="renderTable()">
 
 
+
+
 <input type="date"
 id="fromDate"
 onchange="renderTable()">
 
 
+
+
 <input type="date"
 id="toDate"
 onchange="renderTable()">
+
+
 
 
 <div class="total-box">
@@ -153,10 +211,16 @@ Total (Filtered):
 </div>
 
 
+
+
 <div class="table-container">
 
 
+
+
 <table>
+
+
 
 
 <thead>
@@ -172,20 +236,32 @@ Total (Filtered):
 </thead>
 
 
+
+
 <tbody id="dataList"></tbody>
+
+
 
 
 </table>
 
 
+
+
 </div>
+
+
 
 
 <script>
 
 
-const STORAGE_KEY="project2Storage";
+
+
+const STORAGE_KEY="project2Data";
 const PASSWORD="3532";
+
+
 
 
 const villageOrder=[
@@ -204,63 +280,103 @@ const villageOrder=[
 ];
 
 
+
+
 let villageListData=[...villageOrder];
+
+
 
 
 function loadVillageList(){
 
 
+
+
 let list=document.getElementById("villageList");
+
+
 
 
 list.innerHTML="";
 
 
+
+
 villageListData.forEach(v=>{
+
+
 
 
 let opt=document.createElement("option");
 
 
+
+
 opt.value=v;
+
+
 
 
 list.appendChild(opt);
 
 
+
+
 });
+
+
 
 
 }
 
 
+
+
 function getToday(){
+
+
 
 
 let d=new Date();
 
 
+
+
 let y=d.getFullYear();
+
+
 
 
 let m=String(d.getMonth()+1)
 .padStart(2,'0');
 
 
+
+
 let day=String(d.getDate())
 .padStart(2,'0');
+
+
 
 
 return `${y}-${m}-${day}`;
 
 
+
+
 }
+
+
 
 
 window.onload=function(){
 
 
+
+
 let today=getToday();
+
+
 
 
 dateInput.value=today;
@@ -268,16 +384,26 @@ fromDate.value=today;
 toDate.value=today;
 
 
+
+
 loadVillageList();
+
+
 
 
 renderTable();
 
 
+
+
 };
 
 
+
+
 function getData(){
+
+
 
 
 return JSON.parse(
@@ -285,10 +411,16 @@ localStorage.getItem(STORAGE_KEY)
 )||[];
 
 
+
+
 }
 
 
+
+
 function saveData(data){
+
+
 
 
 localStorage.setItem(
@@ -297,13 +429,21 @@ JSON.stringify(data)
 );
 
 
+
+
 }
+
+
 
 
 function sortData(data){
 
 
+
+
 return data.sort((a,b)=>{
+
+
 
 
 // DATE
@@ -312,18 +452,26 @@ return a[0].localeCompare(b[0]);
 }
 
 
+
+
 // VILLAGE
 let va=villageOrder.indexOf(a[1]);
 let vb=villageOrder.indexOf(b[1]);
+
+
 
 
 if(va===-1) va=999;
 if(vb===-1) vb=999;
 
 
+
+
 if(va!==vb){
 return va-vb;
 }
+
+
 
 
 // RECEIPT
@@ -332,16 +480,26 @@ return Number(a[3]||0)
 Number(b[3]||0);
 
 
+
+
 });
+
+
 
 
 }
 
 
+
+
 function getFilteredData(){
 
 
+
+
 let data=sortData(getData());
+
+
 
 
 let search=document
@@ -351,8 +509,12 @@ let search=document
 .trim();
 
 
+
+
 let from=fromDate.value;
 let to=toDate.value;
+
+
 
 
 let words=search
@@ -360,8 +522,12 @@ let words=search
 .filter(Boolean);
 
 
+
+
 let includeWords=
 words.filter(w=>!w.startsWith("#"));
+
+
 
 
 let excludeWords=
@@ -370,14 +536,22 @@ words
 .map(w=>w.substring(1));
 
 
+
+
 return data.filter(row=>{
+
+
 
 
 let text=row.join(" ")
 .toLowerCase();
 
 
+
+
 for(let word of includeWords){
+
+
 
 
 if(!text.includes(word)){
@@ -385,10 +559,16 @@ return false;
 }
 
 
+
+
 }
 
 
+
+
 for(let word of excludeWords){
+
+
 
 
 if(text.includes(word)){
@@ -396,34 +576,54 @@ return false;
 }
 
 
+
+
 }
+
+
 
 
 if(from && row[0]<from)
 return false;
 
 
+
+
 if(to && row[0]>to)
 return false;
+
+
 
 
 return true;
 
 
+
+
 });
+
+
 
 
 }
 
 
+
+
 function addData(){
+
+
 
 
 let data=getData();
 
 
+
+
 let village=villageInput.value
 .toUpperCase();
+
+
 
 
 let row=[
@@ -434,6 +634,8 @@ receiptInput.value,
 carInput.value.toUpperCase(),
 sellerInput.value.toUpperCase()
 ];
+
+
 
 
 // REQUIRED
@@ -451,8 +653,12 @@ return;
 }
 
 
+
+
 // DUPLICATE RECEIPT
 if(receiptInput.value){
+
+
 
 
 if(data.some(
@@ -463,7 +669,11 @@ return;
 }
 
 
+
+
 }
+
+
 
 
 // AUTO ADD NEW VILLAGE
@@ -474,19 +684,31 @@ village
 ){
 
 
+
+
 villageListData.push(village);
+
+
 
 
 loadVillageList();
 
 
+
+
 }
+
+
 
 
 data.push(row);
 
 
+
+
 saveData(data);
+
+
 
 
 // CLEAR
@@ -497,47 +719,77 @@ carInput.value="";
 sellerInput.value="";
 
 
+
+
 renderTable();
+
+
 
 
 }
 
 
+
+
 function renderTable(){
+
+
 
 
 let tbody=
 document.getElementById("dataList");
 
 
+
+
 tbody.innerHTML="";
+
+
 
 
 let filtered=getFilteredData();
 
 
+
+
 filtered.forEach((row,index)=>{
+
+
 
 
 let tr=document.createElement("tr");
 
 
+
+
 row.forEach(cell=>{
+
+
 
 
 let td=document.createElement("td");
 
 
+
+
 td.textContent=cell;
+
+
 
 
 tr.appendChild(td);
 
 
+
+
 });
 
 
+
+
 let action=document.createElement("td");
+
+
 
 
 action.innerHTML=`
@@ -547,28 +799,46 @@ Delete
 `;
 
 
+
+
 tr.appendChild(action);
+
+
 
 
 tbody.appendChild(tr);
 
 
+
+
 });
+
+
 
 
 updateTotal();
 
 
+
+
 }
+
+
 
 
 function updateTotal(){
 
 
+
+
 let all=getData();
 
 
+
+
 let filtered=getFilteredData();
+
+
 
 
 let totalAll=all.reduce(
@@ -578,6 +848,8 @@ sum+(parseFloat(row[2])||0),
 );
 
 
+
+
 let totalFiltered=filtered.reduce(
 (sum,row)=>
 sum+(parseFloat(row[2])||0),
@@ -585,9 +857,13 @@ sum+(parseFloat(row[2])||0),
 );
 
 
+
+
 document.getElementById(
 "totalAll"
 ).textContent=totalAll;
+
+
 
 
 document.getElementById(
@@ -598,22 +874,36 @@ totalFiltered+
 filtered.length;
 
 
+
+
 }
+
+
 
 
 function deleteRow(index){
 
 
+
+
 verifyPassword(()=>{
+
+
 
 
 let filtered=getFilteredData();
 
 
+
+
 let data=getData();
 
 
+
+
 let row=filtered[index];
+
+
 
 
 let realIndex=data.findIndex(
@@ -623,25 +913,41 @@ JSON.stringify(row)
 );
 
 
+
+
 data.splice(realIndex,1);
+
+
 
 
 saveData(data);
 
 
+
+
 renderTable();
+
+
 
 
 });
 
 
+
+
 }
+
+
 
 
 function verifyPassword(cb){
 
 
+
+
 let p=prompt("Enter password:");
+
+
 
 
 if(p===PASSWORD){
@@ -651,41 +957,67 @@ alert("Wrong password");
 }
 
 
+
+
 }
+
+
 
 
 function clearData(){
 
 
+
+
 localStorage.removeItem(STORAGE_KEY);
+
+
 
 
 renderTable();
 
 
+
+
 }
+
+
 
 
 function downloadExcel(){
 
 
+
+
 let rows=getFilteredData();
+
+
 
 
 if(rows.length===0){
 
 
+
+
 alert("No data");
+
+
 
 
 return;
 
 
+
+
 }
+
+
 
 
 let ws=
 XLSX.utils.aoa_to_sheet([
+
+
 
 
 [
@@ -698,14 +1030,22 @@ XLSX.utils.aoa_to_sheet([
 ],
 
 
+
+
 ...rows
+
+
 
 
 ]);
 
 
+
+
 let wb=
 XLSX.utils.book_new();
+
+
 
 
 XLSX.utils.book_append_sheet(
@@ -715,16 +1055,24 @@ ws,
 );
 
 
+
+
 XLSX.writeFile(
 wb,
 "project2_data.xlsx"
 );
 
 
+
+
 }
 
 
+
+
 </script>
+
+
 
 
 </body>
