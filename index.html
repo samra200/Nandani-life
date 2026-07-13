@@ -1,837 +1,542 @@
 ﻿<!DOCTYPE html>
 <html>
 <head>
-<title>Project 2 - Goods In</title>
+  <title>Project 2 - Goods In</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+  <style>
+    body{
+      font-family:Arial;
+      text-align:center;
+      margin:20px;
+    }
 
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.3/xlsx.full.min.js"></script>
+    input,button{
+      padding:10px;
+      margin:5px;
+      text-transform:uppercase;
+    }
 
 
-<style>
-body{
-font-family:Arial;
-text-align:center;
-margin:20px;
-}
+    .table-container{
+      overflow-x:auto;
+    }
 
 
-input,button{
-padding:10px;
-margin:5px;
-text-transform:uppercase;
-}
+    table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:20px;
+      min-width:1100px;
+    }
 
 
-.table-container{
-overflow-x:auto;
-}
+    th,td{
+      border:1px solid black;
+      padding:8px;
+    }
 
 
-table{
-width:100%;
-border-collapse:collapse;
-margin-top:20px;
-min-width:1000px;
-}
+    th{
+      background:#f4f4f4;
+    }
 
 
-th,td{
-border:1px solid black;
-padding:8px;
-}
+    .total-box{
+      margin-top:10px;
+      font-weight:bold;
+    }
 
 
-th{
-background:#f4f4f4;
-}
+    .edit-mode{
+      background:#fff3cd;
+    }
 
 
-.total-box{
-margin-top:10px;
-font-weight:bold;
-}
+    .row-actions button{
+      margin:2px;
+      padding:6px 10px;
+    }
 
 
-.edit-mode{
-background:#fff3cd;
-}
+    .row-actions{
+      white-space:nowrap;
+    }
 
 
-@media(max-width:600px){
-input,button{
-width:90%;
-}
-}
-</style>
+    .cell-input{
+      width:95%;
+      box-sizing:border-box;
+      text-transform:uppercase;
+    }
+
+
+    @media(max-width:600px){
+      input,button{
+        width:90%;
+      }
+    }
+  </style>
 </head>
-
-
 <body>
+  <h2>PROJECT 2 - GOODS IN</h2>
 
 
-<h2>PROJECT 2 - GOODS IN</h2>
+  <input type="date" id="dateInput">
+  <input list="villageList" id="villageInput" placeholder="Village">
+  <datalist id="villageList"></datalist>
 
 
-<input type="date" id="dateInput">
+  <input type="number" id="weightInput" placeholder="Weight">
+  <input type="number" id="receiptInput" placeholder="Receipt No">
 
 
-<input list="villageList"
-id="villageInput"
-placeholder="Village">
+  <input list="carList" id="carInput" placeholder="Car No">
+  <datalist id="carList"></datalist>
 
 
-<datalist id="villageList"></datalist>
+  <input list="sellerList" id="sellerInput" placeholder="Seller">
+  <datalist id="sellerList">
+    <option value="SAMRA GADHVI">
+    <option value="MUNNA BHAI">
+    <option value="CHETAN BHAI">
+  </datalist>
 
 
-<input type="number"
-id="weightInput"
-placeholder="Weight">
+  <br>
 
 
-<input type="number"
-id="receiptInput"
-placeholder="Receipt No">
+  <button onclick="addData()">Add</button>
+  <button onclick="downloadExcel()">Download Excel</button>
+  <button onclick="verifyPassword(clearData)">Clear All</button>
 
 
-<input list="carList"
-id="carInput"
-placeholder="Car No">
+  <br><br>
 
 
-<datalist id="carList"></datalist>
+  <input type="text" id="searchInput" placeholder="Search or #exclude" onkeyup="renderTable()">
+  <input type="date" id="fromDate" onchange="renderTable()">
+  <input type="date" id="toDate" onchange="renderTable()">
 
 
-<input list="sellerList"
-id="sellerInput"
-placeholder="Seller">
+  <div class="total-box">
+    Total: <span id="totalFiltered">0</span> |
+    Godown Left: <span id="godownLeft">0</span> |
+    Entries: <span id="entryCount">0</span>
+  </div>
 
 
-<datalist id="sellerList">
-<option value="SAMRA GADHVI">
-<option value="MUNNA BHAI">
-<option value="CHETAN BHAI">
-</datalist>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Village</th>
+          <th>Weight</th>
+          <th>Receipt</th>
+          <th>Car</th>
+          <th>Seller</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="dataList"></tbody>
+    </table>
+  </div>
 
 
-<br>
+  <script>
+    const STORAGE_KEY = "project2Data";
+    const PASSWORD = "3532";
 
 
-<button onclick="addData()">Add</button>
+    const villageOrder = [
+      "GODOWN",
+      "MUNDRA",
+      "SADAU",
+      "KAPAYA",
+      "BAROI",
+      "VANDH",
+      "GOYAR",
+      "SHEKHADIYA",
+      "LUNI",
+      "RAGA",
+      "HAMIRAMORA",
+      "MANGRA",
+      "BORANA"
+    ];
 
 
-<button onclick="downloadExcel()">
-Download Excel
-</button>
+    let villageListData = [...villageOrder];
+    let editRowIndex = null;
 
 
-<button onclick="enableEditMode()">
-Edit
-</button>
+    function $(id){
+      return document.getElementById(id);
+    }
 
 
-<button onclick="verifyPassword(clearData)">
-Clear All
-</button>
+    function loadVillageList(){
+      let list = $("villageList");
+      list.innerHTML = "";
+      villageListData.forEach(v => {
+        let opt = document.createElement("option");
+        opt.value = v;
+        list.appendChild(opt);
+      });
+    }
 
 
-<br><br>
+    function getToday(){
+      return new Date().toISOString().split("T")[0];
+    }
 
 
-<input type="text"
-id="searchInput"
-placeholder="Search or #exclude"
-onkeyup="renderTable()">
+    function getData(){
+      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+    }
 
 
-<input type="date"
-id="fromDate"
-onchange="renderTable()">
+    function saveData(data){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
 
 
-<input type="date"
-id="toDate"
-onchange="renderTable()">
+    function sortData(data){
+      return data.sort((a,b) => {
+        if(a[0] !== b[0]) return a[0].localeCompare(b[0]);
 
 
-<div class="total-box">
+        let va = villageOrder.indexOf(a[1]);
+        let vb = villageOrder.indexOf(b[1]);
 
 
-Total:
-<span id="totalFiltered">0</span>
+        if(va === -1) va = 999;
+        if(vb === -1) vb = 999;
 
 
-|
+        if(va !== vb) return va - vb;
 
 
-Godown Left:
-<span id="godownLeft">0</span>
+        return Number(a[3] || 0) - Number(b[3] || 0);
+      });
+    }
 
 
-|
+    function getFilteredData(){
+      let data = sortData(getData());
+      let search = $("searchInput").value.toLowerCase().trim();
+      let words = search.split(" ").filter(Boolean);
+      let includeWords = words.filter(w => !w.startsWith("#"));
+      let excludeWords = words.filter(w => w.startsWith("#")).map(w => w.substring(1));
 
 
-Entries:
-<span id="entryCount">0</span>
+      return data.filter(row => {
+        let text = row.join(" ").toLowerCase();
 
 
-</div>
+        if(includeWords.length){
+          let found = includeWords.some(word => text.includes(word));
+          if(!found) return false;
+        }
 
 
-<div class="table-container">
+        for(let word of excludeWords){
+          if(text.includes(word)) return false;
+        }
 
 
-<table>
+        if($("fromDate").value && row[0] < $("fromDate").value) return false;
+        if($("toDate").value && row[0] > $("toDate").value) return false;
 
 
-<thead>
-<tr>
-<th>Date</th>
-<th>Village</th>
-<th>Weight</th>
-<th>Receipt</th>
-<th>Car</th>
-<th>Seller</th>
-</tr>
-</thead>
+        return true;
+      });
+    }
 
 
-<tbody id="dataList"></tbody>
+    function addData(){
+      let data = getData();
 
 
-</table>
+      let seller = $("sellerInput").value.toUpperCase() || "SAMRA GADHVI";
+      let village = $("villageInput").value.toUpperCase();
 
 
-</div>
+      if(!$("dateInput").value || !$("weightInput").value){
+        alert("Date and Weight required");
+        return;
+      }
 
 
-<script>
+      if($("receiptInput").value){
+        if(data.some(r => r[3] === $("receiptInput").value)){
+          alert("Duplicate receipt!");
+          return;
+        }
+      }
 
 
-const STORAGE_KEY="project2Data";
-const PASSWORD="3532";
+      if(village && !villageListData.includes(village)){
+        villageListData.push(village);
+        loadVillageList();
+      }
 
 
-let editMode=false;
+      let row = [
+        $("dateInput").value,
+        village,
+        $("weightInput").value,
+        $("receiptInput").value,
+        $("carInput").value.toUpperCase(),
+        seller
+      ];
 
 
-const villageOrder=[
-"GODOWN",
-"MUNDRA",
-"SADAU",
-"KAPAYA",
-"BAROI",
-"VANDH",
-"GOYAR",
-"SHEKHADIYA",
-"LUNI",
-"RAGA",
-"HAMIRAMORA",
-"MANGRA",
-"BORANA"
-];
+      data.push(row);
+      saveData(data);
 
 
-let villageListData=[...villageOrder];
+      $("villageInput").value = "";
+      $("weightInput").value = "";
+      $("receiptInput").value = "";
+      $("carInput").value = "";
+      $("sellerInput").value = "";
 
 
-function loadVillageList(){
+      renderTable();
+    }
 
 
-let list=villageList;
+    function renderTable(){
+      let tbody = $("dataList");
+      tbody.innerHTML = "";
 
 
-list.innerHTML="";
+      let filtered = getFilteredData();
 
 
-villageListData.forEach(v=>{
+      filtered.forEach((row, index) => {
+        let tr = document.createElement("tr");
 
 
-let opt=document.createElement("option");
+        if(editRowIndex === index){
+          row.forEach((cell, i) => {
+            let td = document.createElement("td");
+            let input = document.createElement("input");
+            input.className = "cell-input";
+            input.value = cell;
+            input.setAttribute("data-col", i);
+            td.appendChild(input);
+            tr.appendChild(td);
+          });
 
 
-opt.value=v;
+          let actionTd = document.createElement("td");
+          actionTd.className = "row-actions";
 
 
-list.appendChild(opt);
+          let saveBtn = document.createElement("button");
+          saveBtn.textContent = "Save";
+          saveBtn.onclick = () => saveRowEdit(index);
 
 
-});
+          let cancelBtn = document.createElement("button");
+          cancelBtn.textContent = "Cancel";
+          cancelBtn.onclick = () => {
+            editRowIndex = null;
+            renderTable();
+          };
 
 
-}
+          actionTd.appendChild(saveBtn);
+          actionTd.appendChild(cancelBtn);
+          tr.appendChild(actionTd);
+        } else {
+          row.forEach(cell => {
+            let td = document.createElement("td");
+            td.textContent = cell;
+            tr.appendChild(td);
+          });
 
 
-function getToday(){
-return new Date()
-.toISOString()
-.split('T')[0];
-}
+          let actionTd = document.createElement("td");
+          actionTd.className = "row-actions";
 
 
-window.onload=function(){
+          let editBtn = document.createElement("button");
+          editBtn.textContent = "Edit";
+          editBtn.onclick = () => {
+            editRowIndex = index;
+            renderTable();
+          };
 
 
-let today=getToday();
+          let deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "Delete";
+          deleteBtn.onclick = () => deleteRow(index);
 
 
-dateInput.value=today;
-fromDate.value=today;
-toDate.value=today;
+          actionTd.appendChild(editBtn);
+          actionTd.appendChild(deleteBtn);
+          tr.appendChild(actionTd);
+        }
 
 
-loadVillageList();
+        tbody.appendChild(tr);
+      });
 
 
-renderTable();
+      updateTotals();
+    }
 
 
-};
+    function saveRowEdit(filteredIndex){
+      let data = sortData(getData());
+      let filtered = getFilteredData();
+      let targetRow = filtered[filteredIndex];
 
 
-function getData(){
+      let rowIndex = data.findIndex(r =>
+        r[0] === targetRow[0] &&
+        r[1] === targetRow[1] &&
+        r[2] === targetRow[2] &&
+        r[3] === targetRow[3] &&
+        r[4] === targetRow[4] &&
+        r[5] === targetRow[5]
+      );
 
 
-return JSON.parse(
-localStorage.getItem(STORAGE_KEY)
-)||[];
+      if(rowIndex === -1){
+        editRowIndex = null;
+        renderTable();
+        return;
+      }
 
 
-}
+      let tr = document.querySelectorAll("#dataList tr")[filteredIndex];
+      let inputs = tr.querySelectorAll("input");
+      let newRow = [];
 
 
-function saveData(data){
+      inputs.forEach((input, i) => {
+        let val = input.value.toUpperCase();
+        newRow.push(val);
+      });
 
 
-localStorage.setItem(
-STORAGE_KEY,
-JSON.stringify(data)
-);
+      if(newRow[3] && data.some((r, i) => i !== rowIndex && r[3] === newRow[3])){
+        alert("Duplicate receipt!");
+        return;
+      }
 
 
-}
+      data[rowIndex] = newRow;
 
 
-function sortData(data){
+      saveData(data);
+      editRowIndex = null;
+      renderTable();
+    }
 
 
-return data.sort((a,b)=>{
+    function deleteRow(filteredIndex){
+      let data = sortData(getData());
+      let filtered = getFilteredData();
+      let targetRow = filtered[filteredIndex];
 
 
-if(a[0]!==b[0]){
-return a[0].localeCompare(b[0]);
-}
+      let rowIndex = data.findIndex(r =>
+        r[0] === targetRow[0] &&
+        r[1] === targetRow[1] &&
+        r[2] === targetRow[2] &&
+        r[3] === targetRow[3] &&
+        r[4] === targetRow[4] &&
+        r[5] === targetRow[5]
+      );
 
 
-let va=villageOrder.indexOf(a[1]);
-let vb=villageOrder.indexOf(b[1]);
+      if(rowIndex !== -1){
+        if(confirm("Delete this row?")){
+          data.splice(rowIndex, 1);
+          saveData(data);
+          editRowIndex = null;
+          renderTable();
+        }
+      }
+    }
 
 
-if(va===-1) va=999;
-if(vb===-1) vb=999;
+    function updateTotals(){
+      let filtered = getFilteredData();
+      let total = filtered.reduce((sum, row) => sum + (parseFloat(row[2]) || 0), 0);
+      $("totalFiltered").textContent = total;
+      $("entryCount").textContent = filtered.length;
+      calculateGodownLeft();
+    }
 
 
-if(va!==vb){
-return va-vb;
-}
+    function calculateGodownLeft(){
+      let p2 = getData();
+      let godown = p2
+        .filter(r => r[1] === "GODOWN")
+        .reduce((sum, row) => sum + (parseFloat(row[2]) || 0), 0);
 
 
-return Number(a[3]||0)
--
-Number(b[3]||0);
+      let p1 = JSON.parse(localStorage.getItem("dataList")) || [];
+      let outTotal = p1.reduce((sum, row) => sum + (parseFloat(row[2]) || 0), 0);
 
 
-});
+      $("godownLeft").textContent = godown - outTotal;
+    }
 
 
-}
+    function verifyPassword(cb){
+      let p = prompt("Password:");
+      if(p === PASSWORD){
+        cb();
+      } else {
+        alert("Wrong password");
+      }
+    }
 
 
-function getFilteredData(){
+    function clearData(){
+      localStorage.removeItem(STORAGE_KEY);
+      editRowIndex = null;
+      renderTable();
+    }
 
 
-let data=sortData(getData());
+    function downloadExcel(){
+      let rows = getFilteredData();
+      let ws = XLSX.utils.aoa_to_sheet([
+        ["Date", "Village", "Weight", "Receipt", "Car", "Seller"],
+        ...rows
+      ]);
+      let wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Data");
+      XLSX.writeFile(wb, "project2.xlsx");
+    }
 
 
-let search=searchInput.value
-.toLowerCase()
-.trim();
+    window.onload = function(){
+      let today = getToday();
+      $("dateInput").value = today;
+      $("fromDate").value = today;
+      $("toDate").value = today;
+      loadVillageList();
+      renderTable();
+    };
 
 
-let words=search.split(" ")
-.filter(Boolean);
+    $("villageInput").addEventListener("change", () => $("weightInput").focus());
 
 
-let includeWords=
-words.filter(w=>!w.startsWith("#"));
-
-
-let excludeWords=
-words
-.filter(w=>w.startsWith("#"))
-.map(w=>w.substring(1));
-
-
-return data.filter(row=>{
-
-
-let text=row.join(" ")
-.toLowerCase();
-
-
-if(includeWords.length){
-
-
-let found=
-includeWords.some(word=>
-text.includes(word)
-);
-
-
-if(!found) return false;
-
-
-}
-
-
-for(let word of excludeWords){
-
-
-if(text.includes(word)){
-return false;
-}
-
-
-}
-
-
-if(fromDate.value &&
-row[0]<fromDate.value)
-return false;
-
-
-if(toDate.value &&
-row[0]>toDate.value)
-return false;
-
-
-return true;
-
-
-});
-
-
-}
-
-
-function addData(){
-
-
-let data=getData();
-
-
-let seller=
-sellerInput.value.toUpperCase()
-||
-"SAMRA GADHVI";
-
-
-let village=
-villageInput.value.toUpperCase();
-
-
-let row=[
-dateInput.value,
-village,
-weightInput.value,
-receiptInput.value,
-carInput.value.toUpperCase(),
-seller
-];
-
-
-if(!dateInput.value ||
-!weightInput.value){
-alert("Date and Weight required");
-return;
-}
-
-
-if(receiptInput.value){
-
-
-if(data.some(
-r=>r[3]===receiptInput.value
-)){
-alert("Duplicate receipt!");
-return;
-}
-
-
-}
-
-
-if(village &&
-!villageListData.includes(village)){
-
-
-villageListData.push(village);
-
-
-loadVillageList();
-
-
-}
-
-
-data.push(row);
-
-
-saveData(data);
-
-
-villageInput.value="";
-weightInput.value="";
-receiptInput.value="";
-carInput.value="";
-sellerInput.value="";
-
-
-renderTable();
-
-
-}
-
-
-function renderTable(){
-
-
-let tbody=dataList;
-
-
-tbody.innerHTML="";
-
-
-let filtered=getFilteredData();
-
-
-filtered.forEach(row=>{
-
-
-let tr=document.createElement("tr");
-
-
-if(editMode){
-
-
-tr.classList.add("edit-mode");
-
-
-row.forEach(cell=>{
-
-
-let td=document.createElement("td");
-
-
-td.innerHTML=
-`<input value="${cell}">`;
-
-
-tr.appendChild(td);
-
-
-});
-
-
-}else{
-
-
-row.forEach(cell=>{
-
-
-let td=document.createElement("td");
-
-
-td.textContent=cell;
-
-
-tr.appendChild(td);
-
-
-});
-
-
-}
-
-
-tbody.appendChild(tr);
-
-
-});
-
-
-updateTotals();
-
-
-}
-
-
-function updateTotals(){
-
-
-let filtered=getFilteredData();
-
-
-let total=filtered.reduce(
-(sum,row)=>
-sum+(parseFloat(row[2])||0),
-0
-);
-
-
-totalFiltered.textContent=total;
-
-
-entryCount.textContent=
-filtered.length;
-
-
-calculateGodownLeft();
-
-
-}
-
-
-function calculateGodownLeft(){
-
-
-let p2=getData();
-
-
-let godown=p2
-.filter(r=>r[1]==="GODOWN")
-.reduce(
-(sum,row)=>
-sum+(parseFloat(row[2])||0),
-0
-);
-
-
-let p1=JSON.parse(
-localStorage.getItem("dataList")
-)||[];
-
-
-let outTotal=p1.reduce(
-(sum,row)=>
-sum+(parseFloat(row[2])||0),
-0
-);
-
-
-godownLeft.textContent=
-godown-outTotal;
-
-
-}
-
-
-function enableEditMode(){
-
-
-verifyPassword(()=>{
-
-
-editMode=!editMode;
-
-
-if(editMode){
-
-
-let saveBtn=document.createElement("button");
-
-
-saveBtn.id="saveEditBtn";
-
-
-saveBtn.textContent="Save All";
-
-
-saveBtn.onclick=saveAllEdits;
-
-
-document.body.insertBefore(
-saveBtn,
-document.querySelector(".table-container")
-);
-
-
-}else{
-
-
-let btn=
-document.getElementById("saveEditBtn");
-
-
-if(btn) btn.remove();
-
-
-}
-
-
-renderTable();
-
-
-});
-
-
-}
-
-
-function saveAllEdits(){
-
-
-let rows=
-document.querySelectorAll(
-"#dataList tr"
-);
-
-
-let newData=[];
-
-
-rows.forEach(r=>{
-
-
-let inputs=
-r.querySelectorAll("input");
-
-
-let row=[];
-
-
-inputs.forEach(i=>{
-row.push(
-i.value.toUpperCase()
-);
-});
-
-
-newData.push(row);
-
-
-});
-
-
-saveData(newData);
-
-
-editMode=false;
-
-
-document
-.getElementById("saveEditBtn")
-.remove();
-
-
-renderTable();
-
-
-}
-
-
-function verifyPassword(cb){
-
-
-let p=prompt("Password:");
-
-
-if(p===PASSWORD){
-cb();
-}else{
-alert("Wrong password");
-}
-
-
-}
-
-
-function clearData(){
-
-
-localStorage.removeItem(STORAGE_KEY);
-
-
-renderTable();
-
-
-}
-
-
-function downloadExcel(){
-
-
-let rows=getFilteredData();
-
-
-let ws=
-XLSX.utils.aoa_to_sheet([
-
-
-[
-"Date",
-"Village",
-"Weight",
-"Receipt",
-"Car",
-"Seller"
-],
-
-
-...rows
-
-
-]);
-
-
-let wb=
-XLSX.utils.book_new();
-
-
-XLSX.utils.book_append_sheet(
-wb,
-ws,
-"Data"
-);
-
-
-XLSX.writeFile(
-wb,
-"project2.xlsx"
-);
-
-
-}
-
-
-villageInput.addEventListener(
-"change",
-()=>weightInput.focus()
-);
-
-
-carInput.addEventListener(
-"change",
-()=>{
-if(dateInput.value &&
-weightInput.value){
-addData();
-}
-}
-);
-
-
-</script>
-
-
+    $("carInput").addEventListener("change", () => {
+      if($("dateInput").value && $("weightInput").value){
+        addData();
+      }
+    });
+  </script>
 </body>
 </html>
