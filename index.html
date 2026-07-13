@@ -34,6 +34,7 @@
     th,td{
       border:1px solid black;
       padding:8px;
+      vertical-align:middle;
     }
 
 
@@ -162,7 +163,7 @@
 
 
     let villageListData = [...villageOrder];
-    let editingId = null;
+    let editingKey = null;
 
 
     function $(id){
@@ -187,6 +188,7 @@
 
 
     function normalizeRow(row){
+      row = row || [];
       return [
         row[0] || "",
         row[1] || "",
@@ -200,12 +202,22 @@
 
     function getData(){
       let raw = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
-      return raw.map(normalizeRow);
+      let normalized = raw.map(normalizeRow);
+      let changed = JSON.stringify(raw) !== JSON.stringify(normalized);
+      if(changed){
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+      }
+      return normalized;
     }
 
 
     function saveData(data){
       localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
+
+
+    function rowKey(row){
+      return normalizeRow(row).join("||");
     }
 
 
@@ -295,7 +307,7 @@
 
 
       let row = [date, village, weight, receipt, car, seller];
-      data.push(row);
+      data.push(normalizeRow(row));
       saveData(data);
 
 
@@ -319,20 +331,21 @@
 
 
       filtered.forEach((row) => {
+        row = normalizeRow(row);
         let tr = document.createElement("tr");
-        let rowKey = row.join("|");
+        let key = rowKey(row);
 
 
-        if(editingId === rowKey){
-          row.forEach((cell, i) => {
+        if(editingKey === key){
+          for(let i = 0; i < 6; i++){
             let td = document.createElement("td");
             let input = document.createElement("input");
             input.className = "cell-input";
-            input.value = cell || "";
+            input.value = row[i] || "";
             input.setAttribute("data-col", i);
             td.appendChild(input);
             tr.appendChild(td);
-          });
+          }
 
 
           let actionTd = document.createElement("td");
@@ -341,13 +354,13 @@
 
           let saveBtn = document.createElement("button");
           saveBtn.textContent = "Save";
-          saveBtn.onclick = () => saveRowEdit(rowKey);
+          saveBtn.onclick = () => saveRowEdit(key);
 
 
           let cancelBtn = document.createElement("button");
           cancelBtn.textContent = "Cancel";
           cancelBtn.onclick = () => {
-            editingId = null;
+            editingKey = null;
             renderTable();
           };
 
@@ -370,14 +383,14 @@
           let editBtn = document.createElement("button");
           editBtn.textContent = "Edit";
           editBtn.onclick = () => {
-            editingId = rowKey;
+            editingKey = key;
             renderTable();
           };
 
 
           let deleteBtn = document.createElement("button");
           deleteBtn.textContent = "Delete";
-          deleteBtn.onclick = () => deleteRow(rowKey);
+          deleteBtn.onclick = () => deleteRow(key);
 
 
           actionTd.appendChild(editBtn);
@@ -394,47 +407,39 @@
     }
 
 
-    function saveRowEdit(rowKey){
+    function saveRowEdit(key){
       let data = getData();
-      let index = data.findIndex(r => r.join("|") === rowKey);
+      let index = data.findIndex(r => rowKey(r) === key);
       if(index === -1){
-        editingId = null;
+        editingKey = null;
         renderTable();
         return;
       }
 
 
-      let tr = document.querySelectorAll("#dataList tr")[0];
-      let allRows = document.querySelectorAll("#dataList tr");
-      let targetTr = null;
-
-
-      for(let r of allRows){
-        if(r.querySelectorAll("input").length){
-          let currentInputs = r.querySelectorAll("input");
-          let currentRowKey = Array.from(currentInputs).map(i => i.value || "").join("|");
-          if(editingId === rowKey){
-            targetTr = r;
+      let inputs = document.querySelectorAll("#dataList tr")[0].querySelectorAll("input");
+      if(editingKey !== key){
+        let rows = document.querySelectorAll("#dataList tr");
+        let found = null;
+        for(let r of rows){
+          let rowInputs = r.querySelectorAll("input");
+          if(rowInputs.length === 6){
+            found = r;
             break;
           }
         }
+        if(!found){
+          editingKey = null;
+          renderTable();
+          return;
+        }
+        inputs = found.querySelectorAll("input");
       }
 
 
-      if(!targetTr){
-        editingId = null;
-        renderTable();
-        return;
-      }
-
-
-      let inputs = targetTr.querySelectorAll("input");
       let newRow = [];
-
-
-      inputs.forEach(input => {
-        newRow.push(input.value.trim().toUpperCase());
-      });
+      inputs.forEach(input => newRow.push(input.value.trim().toUpperCase()));
+      newRow = normalizeRow(newRow);
 
 
       if(newRow[3] && data.some((r, i) => i !== index && (r[3] || "") === newRow[3])){
@@ -449,23 +454,23 @@
       }
 
 
-      data[index] = normalizeRow(newRow);
+      data[index] = newRow;
       saveData(data);
 
 
-      editingId = null;
+      editingKey = null;
       renderTable();
     }
 
 
-    function deleteRow(rowKey){
+    function deleteRow(key){
       let data = getData();
-      let index = data.findIndex(r => r.join("|") === rowKey);
+      let index = data.findIndex(r => rowKey(r) === key);
       if(index !== -1){
         if(confirm("Delete this row?")){
           data.splice(index, 1);
           saveData(data);
-          editingId = null;
+          editingKey = null;
           renderTable();
         }
       }
@@ -508,7 +513,7 @@
 
     function clearData(){
       localStorage.removeItem(STORAGE_KEY);
-      editingId = null;
+      editingKey = null;
       renderTable();
     }
 
@@ -517,7 +522,7 @@
       let rows = getFilteredData();
       let ws = XLSX.utils.aoa_to_sheet([
         ["Date", "Village", "Weight", "Receipt", "Car", "Seller"],
-        ...rows
+        ...rows.map(normalizeRow)
       ]);
       let wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Data");
@@ -531,6 +536,7 @@
       $("fromDate").value = today;
       $("toDate").value = today;
       loadVillageList();
+      getData();
       renderTable();
     };
 
