@@ -48,19 +48,14 @@
     }
 
 
-    .edit-mode{
-      background:#fff3cd;
+    .row-actions{
+      white-space:nowrap;
     }
 
 
     .row-actions button{
       margin:2px;
       padding:6px 10px;
-    }
-
-
-    .row-actions{
-      white-space:nowrap;
     }
 
 
@@ -167,7 +162,7 @@
 
 
     let villageListData = [...villageOrder];
-    let editRowIndex = null;
+    let editingId = null;
 
 
     function $(id){
@@ -191,8 +186,21 @@
     }
 
 
+    function normalizeRow(row){
+      return [
+        row[0] || "",
+        row[1] || "",
+        row[2] || "",
+        row[3] || "",
+        row[4] || "",
+        row[5] || ""
+      ];
+    }
+
+
     function getData(){
-      return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      let raw = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      return raw.map(normalizeRow);
     }
 
 
@@ -258,18 +266,22 @@
       let data = getData();
 
 
-      let seller = $("sellerInput").value.toUpperCase() || "SAMRA GADHVI";
-      let village = $("villageInput").value.toUpperCase();
+      let date = $("dateInput").value;
+      let village = $("villageInput").value.trim().toUpperCase();
+      let weight = $("weightInput").value.trim();
+      let receipt = $("receiptInput").value.trim();
+      let car = $("carInput").value.trim().toUpperCase();
+      let seller = $("sellerInput").value.trim().toUpperCase();
 
 
-      if(!$("dateInput").value || !$("weightInput").value){
+      if(!date || !weight){
         alert("Date and Weight required");
         return;
       }
 
 
-      if($("receiptInput").value){
-        if(data.some(r => r[3] === $("receiptInput").value)){
+      if(receipt){
+        if(data.some(r => (r[3] || "") === receipt)){
           alert("Duplicate receipt!");
           return;
         }
@@ -282,16 +294,7 @@
       }
 
 
-      let row = [
-        $("dateInput").value,
-        village,
-        $("weightInput").value,
-        $("receiptInput").value,
-        $("carInput").value.toUpperCase(),
-        seller
-      ];
-
-
+      let row = [date, village, weight, receipt, car, seller];
       data.push(row);
       saveData(data);
 
@@ -315,16 +318,17 @@
       let filtered = getFilteredData();
 
 
-      filtered.forEach((row, index) => {
+      filtered.forEach((row) => {
         let tr = document.createElement("tr");
+        let rowKey = row.join("|");
 
 
-        if(editRowIndex === index){
+        if(editingId === rowKey){
           row.forEach((cell, i) => {
             let td = document.createElement("td");
             let input = document.createElement("input");
             input.className = "cell-input";
-            input.value = cell;
+            input.value = cell || "";
             input.setAttribute("data-col", i);
             td.appendChild(input);
             tr.appendChild(td);
@@ -337,13 +341,13 @@
 
           let saveBtn = document.createElement("button");
           saveBtn.textContent = "Save";
-          saveBtn.onclick = () => saveRowEdit(index);
+          saveBtn.onclick = () => saveRowEdit(rowKey);
 
 
           let cancelBtn = document.createElement("button");
           cancelBtn.textContent = "Cancel";
           cancelBtn.onclick = () => {
-            editRowIndex = null;
+            editingId = null;
             renderTable();
           };
 
@@ -352,11 +356,11 @@
           actionTd.appendChild(cancelBtn);
           tr.appendChild(actionTd);
         } else {
-          row.forEach(cell => {
+          for(let i = 0; i < 6; i++){
             let td = document.createElement("td");
-            td.textContent = cell;
+            td.textContent = row[i] || "";
             tr.appendChild(td);
-          });
+          }
 
 
           let actionTd = document.createElement("td");
@@ -366,14 +370,14 @@
           let editBtn = document.createElement("button");
           editBtn.textContent = "Edit";
           editBtn.onclick = () => {
-            editRowIndex = index;
+            editingId = rowKey;
             renderTable();
           };
 
 
           let deleteBtn = document.createElement("button");
           deleteBtn.textContent = "Delete";
-          deleteBtn.onclick = () => deleteRow(index);
+          deleteBtn.onclick = () => deleteRow(rowKey);
 
 
           actionTd.appendChild(editBtn);
@@ -390,76 +394,78 @@
     }
 
 
-    function saveRowEdit(filteredIndex){
-      let data = sortData(getData());
-      let filtered = getFilteredData();
-      let targetRow = filtered[filteredIndex];
-
-
-      let rowIndex = data.findIndex(r =>
-        r[0] === targetRow[0] &&
-        r[1] === targetRow[1] &&
-        r[2] === targetRow[2] &&
-        r[3] === targetRow[3] &&
-        r[4] === targetRow[4] &&
-        r[5] === targetRow[5]
-      );
-
-
-      if(rowIndex === -1){
-        editRowIndex = null;
+    function saveRowEdit(rowKey){
+      let data = getData();
+      let index = data.findIndex(r => r.join("|") === rowKey);
+      if(index === -1){
+        editingId = null;
         renderTable();
         return;
       }
 
 
-      let tr = document.querySelectorAll("#dataList tr")[filteredIndex];
-      let inputs = tr.querySelectorAll("input");
+      let tr = document.querySelectorAll("#dataList tr")[0];
+      let allRows = document.querySelectorAll("#dataList tr");
+      let targetTr = null;
+
+
+      for(let r of allRows){
+        if(r.querySelectorAll("input").length){
+          let currentInputs = r.querySelectorAll("input");
+          let currentRowKey = Array.from(currentInputs).map(i => i.value || "").join("|");
+          if(editingId === rowKey){
+            targetTr = r;
+            break;
+          }
+        }
+      }
+
+
+      if(!targetTr){
+        editingId = null;
+        renderTable();
+        return;
+      }
+
+
+      let inputs = targetTr.querySelectorAll("input");
       let newRow = [];
 
 
-      inputs.forEach((input, i) => {
-        let val = input.value.toUpperCase();
-        newRow.push(val);
+      inputs.forEach(input => {
+        newRow.push(input.value.trim().toUpperCase());
       });
 
 
-      if(newRow[3] && data.some((r, i) => i !== rowIndex && r[3] === newRow[3])){
+      if(newRow[3] && data.some((r, i) => i !== index && (r[3] || "") === newRow[3])){
         alert("Duplicate receipt!");
         return;
       }
 
 
-      data[rowIndex] = newRow;
+      if(newRow[1] && !villageListData.includes(newRow[1])){
+        villageListData.push(newRow[1]);
+        loadVillageList();
+      }
 
 
+      data[index] = normalizeRow(newRow);
       saveData(data);
-      editRowIndex = null;
+
+
+      editingId = null;
       renderTable();
     }
 
 
-    function deleteRow(filteredIndex){
-      let data = sortData(getData());
-      let filtered = getFilteredData();
-      let targetRow = filtered[filteredIndex];
-
-
-      let rowIndex = data.findIndex(r =>
-        r[0] === targetRow[0] &&
-        r[1] === targetRow[1] &&
-        r[2] === targetRow[2] &&
-        r[3] === targetRow[3] &&
-        r[4] === targetRow[4] &&
-        r[5] === targetRow[5]
-      );
-
-
-      if(rowIndex !== -1){
+    function deleteRow(rowKey){
+      let data = getData();
+      let index = data.findIndex(r => r.join("|") === rowKey);
+      if(index !== -1){
         if(confirm("Delete this row?")){
-          data.splice(rowIndex, 1);
+          data.splice(index, 1);
           saveData(data);
-          editRowIndex = null;
+          editingId = null;
           renderTable();
         }
       }
@@ -502,7 +508,7 @@
 
     function clearData(){
       localStorage.removeItem(STORAGE_KEY);
-      editRowIndex = null;
+      editingId = null;
       renderTable();
     }
 
