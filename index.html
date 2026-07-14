@@ -11,7 +11,7 @@
     }
 
 
-    input,button{
+    input,button,select{
       padding:10px;
       margin:5px;
       text-transform:uppercase;
@@ -27,7 +27,7 @@
       width:100%;
       border-collapse:collapse;
       margin-top:20px;
-      min-width:1100px;
+      min-width:1150px;
     }
 
 
@@ -68,7 +68,7 @@
 
 
     @media(max-width:600px){
-      input,button{
+      input,button,select{
         width:90%;
       }
     }
@@ -143,6 +143,8 @@
   <script>
     const STORAGE_KEY = "project2Data";
     const PASSWORD = "3532";
+    const DEFAULT_SELLER = "SAMRA GADHVI";
+    const SELLER_MEMORY_KEY = "project2LastSeller";
 
 
     const villageOrder = [
@@ -163,7 +165,8 @@
 
 
     let villageListData = [...villageOrder];
-    let editingKey = null;
+    let editingId = null;
+    let nextId = Date.now();
 
 
     function $(id){
@@ -187,15 +190,46 @@
     }
 
 
+    function makeId(){
+      nextId += 1;
+      return String(nextId);
+    }
+
+
     function normalizeRow(row){
-      row = row || [];
+      row = row || {};
+      if(Array.isArray(row)){
+        return {
+          id: row[6] || makeId(),
+          date: row[0] || "",
+          village: row[1] || "",
+          weight: row[2] || "",
+          receipt: row[3] || "",
+          car: row[4] || "",
+          seller: row[5] || DEFAULT_SELLER
+        };
+      }
+      return {
+        id: row.id || makeId(),
+        date: row.date || "",
+        village: row.village || "",
+        weight: row.weight || "",
+        receipt: row.receipt || "",
+        car: row.car || "",
+        seller: row.seller || DEFAULT_SELLER
+      };
+    }
+
+
+    function toArray(row){
       return [
-        row[0] || "",
-        row[1] || "",
-        row[2] || "",
-        row[3] || "",
-        row[4] || "",
-        row[5] || ""
+        row.date || "",
+        row.village || "",
+        row.weight || "",
+        row.receipt || "",
+        row.car || "",
+        row.seller || DEFAULT_SELLER,
+        row.id || makeId()
       ];
     }
 
@@ -203,31 +237,26 @@
     function getData(){
       let raw = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
       let normalized = raw.map(normalizeRow);
-      let changed = JSON.stringify(raw) !== JSON.stringify(normalized);
+      let changed = JSON.stringify(raw) !== JSON.stringify(normalized.map(toArray));
       if(changed){
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized));
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(normalized.map(toArray)));
       }
       return normalized;
     }
 
 
     function saveData(data){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
-
-
-    function rowKey(row){
-      return normalizeRow(row).join("||");
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data.map(toArray)));
     }
 
 
     function sortData(data){
       return data.sort((a,b) => {
-        if(a[0] !== b[0]) return a[0].localeCompare(b[0]);
+        if(a.date !== b.date) return a.date.localeCompare(b.date);
 
 
-        let va = villageOrder.indexOf(a[1]);
-        let vb = villageOrder.indexOf(b[1]);
+        let va = villageOrder.indexOf(a.village);
+        let vb = villageOrder.indexOf(b.village);
 
 
         if(va === -1) va = 999;
@@ -237,7 +266,7 @@
         if(va !== vb) return va - vb;
 
 
-        return Number(a[3] || 0) - Number(b[3] || 0);
+        return Number(a.receipt || 0) - Number(b.receipt || 0);
       });
     }
 
@@ -251,7 +280,9 @@
 
 
       return data.filter(row => {
-        let text = row.join(" ").toLowerCase();
+        let text = [
+          row.date, row.village, row.weight, row.receipt, row.car, row.seller
+        ].join(" ").toLowerCase();
 
 
         if(includeWords.length){
@@ -265,12 +296,24 @@
         }
 
 
-        if($("fromDate").value && row[0] < $("fromDate").value) return false;
-        if($("toDate").value && row[0] > $("toDate").value) return false;
+        if($("fromDate").value && row.date < $("fromDate").value) return false;
+        if($("toDate").value && row.date > $("toDate").value) return false;
 
 
         return true;
       });
+    }
+
+
+    function getLastSeller(){
+      return localStorage.getItem(SELLER_MEMORY_KEY) || DEFAULT_SELLER;
+    }
+
+
+    function setLastSeller(seller){
+      if(seller && seller.trim()){
+        localStorage.setItem(SELLER_MEMORY_KEY, seller.trim().toUpperCase());
+      }
     }
 
 
@@ -283,7 +326,7 @@
       let weight = $("weightInput").value.trim();
       let receipt = $("receiptInput").value.trim();
       let car = $("carInput").value.trim().toUpperCase();
-      let seller = $("sellerInput").value.trim().toUpperCase();
+      let seller = $("sellerInput").value.trim().toUpperCase() || getLastSeller();
 
 
       if(!date || !weight){
@@ -293,7 +336,7 @@
 
 
       if(receipt){
-        if(data.some(r => (r[3] || "") === receipt)){
+        if(data.some(r => (r.receipt || "") === receipt)){
           alert("Duplicate receipt!");
           return;
         }
@@ -306,16 +349,27 @@
       }
 
 
-      let row = [date, village, weight, receipt, car, seller];
-      data.push(normalizeRow(row));
+      let row = {
+        id: makeId(),
+        date,
+        village,
+        weight,
+        receipt,
+        car,
+        seller
+      };
+
+
+      data.push(row);
       saveData(data);
+      setLastSeller(seller);
 
 
       $("villageInput").value = "";
       $("weightInput").value = "";
       $("receiptInput").value = "";
       $("carInput").value = "";
-      $("sellerInput").value = "";
+      $("sellerInput").value = seller;
 
 
       renderTable();
@@ -331,21 +385,21 @@
 
 
       filtered.forEach((row) => {
-        row = normalizeRow(row);
         let tr = document.createElement("tr");
-        let key = rowKey(row);
 
 
-        if(editingKey === key){
-          for(let i = 0; i < 6; i++){
+        if(editingId === row.id){
+          let fields = [row.date, row.village, row.weight, row.receipt, row.car, row.seller];
+
+
+          fields.forEach((cell, i) => {
             let td = document.createElement("td");
             let input = document.createElement("input");
             input.className = "cell-input";
-            input.value = row[i] || "";
-            input.setAttribute("data-col", i);
+            input.value = cell || "";
             td.appendChild(input);
             tr.appendChild(td);
-          }
+          });
 
 
           let actionTd = document.createElement("td");
@@ -354,13 +408,13 @@
 
           let saveBtn = document.createElement("button");
           saveBtn.textContent = "Save";
-          saveBtn.onclick = () => saveRowEdit(key);
+          saveBtn.onclick = () => saveRowEdit(row.id);
 
 
           let cancelBtn = document.createElement("button");
           cancelBtn.textContent = "Cancel";
           cancelBtn.onclick = () => {
-            editingKey = null;
+            editingId = null;
             renderTable();
           };
 
@@ -369,11 +423,12 @@
           actionTd.appendChild(cancelBtn);
           tr.appendChild(actionTd);
         } else {
-          for(let i = 0; i < 6; i++){
+          let values = [row.date, row.village, row.weight, row.receipt, row.car, row.seller];
+          values.forEach(cell => {
             let td = document.createElement("td");
-            td.textContent = row[i] || "";
+            td.textContent = cell || "";
             tr.appendChild(td);
-          }
+          });
 
 
           let actionTd = document.createElement("td");
@@ -383,14 +438,14 @@
           let editBtn = document.createElement("button");
           editBtn.textContent = "Edit";
           editBtn.onclick = () => {
-            editingKey = key;
+            editingId = row.id;
             renderTable();
           };
 
 
           let deleteBtn = document.createElement("button");
           deleteBtn.textContent = "Delete";
-          deleteBtn.onclick = () => deleteRow(key);
+          deleteBtn.onclick = () => deleteRow(row.id);
 
 
           actionTd.appendChild(editBtn);
@@ -407,70 +462,73 @@
     }
 
 
-    function saveRowEdit(key){
+    function saveRowEdit(id){
       let data = getData();
-      let index = data.findIndex(r => rowKey(r) === key);
+      let index = data.findIndex(r => r.id === id);
       if(index === -1){
-        editingKey = null;
+        editingId = null;
         renderTable();
         return;
       }
 
 
-      let inputs = document.querySelectorAll("#dataList tr")[0].querySelectorAll("input");
-      if(editingKey !== key){
-        let rows = document.querySelectorAll("#dataList tr");
-        let found = null;
-        for(let r of rows){
-          let rowInputs = r.querySelectorAll("input");
-          if(rowInputs.length === 6){
-            found = r;
-            break;
-          }
+      let row = document.querySelectorAll("#dataList tr");
+      let target = null;
+      for(let tr of row){
+        if(tr.querySelectorAll("input").length === 6){
+          target = tr;
+          break;
         }
-        if(!found){
-          editingKey = null;
-          renderTable();
-          return;
-        }
-        inputs = found.querySelectorAll("input");
+      }
+      if(!target){
+        editingId = null;
+        renderTable();
+        return;
       }
 
 
-      let newRow = [];
-      inputs.forEach(input => newRow.push(input.value.trim().toUpperCase()));
-      newRow = normalizeRow(newRow);
+      let inputs = target.querySelectorAll("input");
+      let newRow = {
+        id: data[index].id,
+        date: inputs[0].value.trim(),
+        village: inputs[1].value.trim().toUpperCase(),
+        weight: inputs[2].value.trim(),
+        receipt: inputs[3].value.trim(),
+        car: inputs[4].value.trim().toUpperCase(),
+        seller: inputs[5].value.trim().toUpperCase() || DEFAULT_SELLER
+      };
 
 
-      if(newRow[3] && data.some((r, i) => i !== index && (r[3] || "") === newRow[3])){
+      if(newRow.receipt && data.some((r, i) => i !== index && (r.receipt || "") === newRow.receipt)){
         alert("Duplicate receipt!");
         return;
       }
 
 
-      if(newRow[1] && !villageListData.includes(newRow[1])){
-        villageListData.push(newRow[1]);
+      if(newRow.village && !villageListData.includes(newRow.village)){
+        villageListData.push(newRow.village);
         loadVillageList();
       }
 
 
       data[index] = newRow;
       saveData(data);
+      setLastSeller(newRow.seller);
 
 
-      editingKey = null;
+      editingId = null;
       renderTable();
     }
 
 
-    function deleteRow(key){
+    function deleteRow(id){
       let data = getData();
-      let index = data.findIndex(r => rowKey(r) === key);
+      let index = data.findIndex(r => r.id === id);
       if(index !== -1){
         if(confirm("Delete this row?")){
           data.splice(index, 1);
           saveData(data);
-          editingKey = null;
+          editingId = null;
           renderTable();
         }
       }
@@ -479,7 +537,7 @@
 
     function updateTotals(){
       let filtered = getFilteredData();
-      let total = filtered.reduce((sum, row) => sum + (parseFloat(row[2]) || 0), 0);
+      let total = filtered.reduce((sum, row) => sum + (parseFloat(row.weight) || 0), 0);
       $("totalFiltered").textContent = total;
       $("entryCount").textContent = filtered.length;
       calculateGodownLeft();
@@ -489,8 +547,8 @@
     function calculateGodownLeft(){
       let p2 = getData();
       let godown = p2
-        .filter(r => r[1] === "GODOWN")
-        .reduce((sum, row) => sum + (parseFloat(row[2]) || 0), 0);
+        .filter(r => r.village === "GODOWN")
+        .reduce((sum, row) => sum + (parseFloat(row.weight) || 0), 0);
 
 
       let p1 = JSON.parse(localStorage.getItem("dataList")) || [];
@@ -513,7 +571,7 @@
 
     function clearData(){
       localStorage.removeItem(STORAGE_KEY);
-      editingKey = null;
+      editingId = null;
       renderTable();
     }
 
@@ -522,7 +580,7 @@
       let rows = getFilteredData();
       let ws = XLSX.utils.aoa_to_sheet([
         ["Date", "Village", "Weight", "Receipt", "Car", "Seller"],
-        ...rows.map(normalizeRow)
+        ...rows.map(r => [r.date, r.village, r.weight, r.receipt, r.car, r.seller])
       ]);
       let wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Data");
@@ -530,18 +588,39 @@
     }
 
 
+    function migrateOldDataOnce(){
+      let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+      let fixed = data.map(normalizeRow).map(r => ({
+        id: r.id,
+        date: r.date,
+        village: r.village,
+        weight: r.weight,
+        receipt: r.receipt,
+        car: r.car,
+        seller: r.seller || DEFAULT_SELLER
+      }));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(fixed.map(toArray)));
+    }
+
+
     window.onload = function(){
+      migrateOldDataOnce();
       let today = getToday();
       $("dateInput").value = today;
       $("fromDate").value = today;
       $("toDate").value = today;
+      $("sellerInput").value = getLastSeller();
       loadVillageList();
-      getData();
       renderTable();
     };
 
 
     $("villageInput").addEventListener("change", () => $("weightInput").focus());
+
+
+    $("sellerInput").addEventListener("change", () => {
+      setLastSeller($("sellerInput").value);
+    });
 
 
     $("carInput").addEventListener("change", () => {
